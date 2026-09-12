@@ -6,12 +6,14 @@
     theme,
     morphEnabled,
     showPdfModal,
-    type WorkId
-  } from '$lib/stores/readerStore';
+    type WorkId,
+  } from "$lib/stores/readerStore";
 
   let { manifest = [] } = $props<{ manifest?: any[] }>();
 
-  let selectedWorkMeta = $derived(manifest.find((w) => w.id === $currentWork) || manifest[0]);
+  let selectedWorkMeta = $derived(
+    manifest.find((w) => w.id === $currentWork) || manifest[0],
+  );
   let numBooks = $derived(selectedWorkMeta?.books?.length || 1);
 
   function setWork(id: WorkId) {
@@ -24,10 +26,10 @@
   }
 
   function cycleTheme() {
-    if ($theme === 'sepia') $theme = 'dark';
-    else if ($theme === 'dark') $theme = 'light';
-    else $theme = 'sepia';
-    document.documentElement.setAttribute('data-theme', $theme);
+    if ($theme === "sepia") $theme = "dark";
+    else if ($theme === "dark") $theme = "light";
+    else $theme = "sepia";
+    document.documentElement.setAttribute("data-theme", $theme);
   }
 </script>
 
@@ -44,7 +46,8 @@
       <select
         class="nav-select work-select"
         value={$currentWork}
-        onchange={(e) => setWork((e.target as HTMLSelectElement).value as WorkId)}
+        onchange={(e) =>
+          setWork((e.target as HTMLSelectElement).value as WorkId)}
       >
         <option value="antiquities">Jewish Antiquities (20 Books)</option>
         <option value="war">The Jewish War (7 Books)</option>
@@ -67,11 +70,17 @@
       <div class="button-group mode-group">
         <button
           class="btn mode-btn"
-          class:active={$viewMode === 'parallel'}
-          onclick={() => ($viewMode = 'parallel')}
+          class:active={$viewMode === "parallel"}
+          onclick={() => ($viewMode = "parallel")}
           title="Side-by-Side Facing Columns"
         >
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <rect x="3" y="3" width="8" height="18" rx="1" />
             <rect x="13" y="3" width="8" height="18" rx="1" />
           </svg>
@@ -80,8 +89,8 @@
 
         <button
           class="btn mode-btn"
-          class:active={$viewMode === 'greek'}
-          onclick={() => ($viewMode = 'greek')}
+          class:active={$viewMode === "greek"}
+          onclick={() => ($viewMode = "greek")}
           title="Greek Text Only"
         >
           <span class="greek-sym">Ω</span>
@@ -90,8 +99,8 @@
 
         <button
           class="btn mode-btn"
-          class:active={$viewMode === 'english'}
-          onclick={() => ($viewMode = 'english')}
+          class:active={$viewMode === "english"}
+          onclick={() => ($viewMode = "english")}
           title="English Text Only"
         >
           <span class="eng-sym">EN</span>
@@ -100,11 +109,17 @@
 
         <button
           class="btn mode-btn"
-          class:active={$viewMode === 'stacked'}
-          onclick={() => ($viewMode = 'stacked')}
+          class:active={$viewMode === "stacked"}
+          onclick={() => ($viewMode = "stacked")}
           title="Stacked Verse-by-Verse"
         >
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <line x1="3" y1="6" x2="21" y2="6" />
             <line x1="3" y1="12" x2="21" y2="12" />
             <line x1="3" y1="18" x2="21" y2="18" />
@@ -122,15 +137,19 @@
       >
         <span class="icon-tag">Morph</span>
         <span class="status-badge" class:on={$morphEnabled}>
-          {$morphEnabled ? 'ON' : 'OFF'}
+          {$morphEnabled ? "ON" : "OFF"}
         </span>
       </button>
 
       <!-- Theme Switcher -->
-      <button class="btn icon-btn" onclick={cycleTheme} title="Switch Theme (Sepia / Dark / Light)">
-        {#if $theme === 'sepia'}
+      <button
+        class="btn icon-btn"
+        onclick={cycleTheme}
+        title="Switch Theme (Sepia / Dark / Light)"
+      >
+        {#if $theme === "sepia"}
           <span class="theme-icon">📜</span>
-        {:else if $theme === 'dark'}
+        {:else if $theme === "dark"}
           <span class="theme-icon">🌙</span>
         {:else}
           <span class="theme-icon">☀️</span>
@@ -143,12 +162,20 @@
         onclick={() => ($showPdfModal = true)}
         title="Generate Facing-Page Printable PDF"
       >
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg
+          class="icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
           <path d="M6 9V2h12v7" />
-          <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+          <path
+            d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"
+          />
           <path d="M6 14h12v8H6z" />
         </svg>
-        <span>Facing PDF</span>
+        <span>PDF</span>
       </button>
     </div>
   </div>
