@@ -12,7 +12,7 @@
   let { manifest = [] } = $props<{ manifest?: any[] }>();
 
   let selectedWorkMeta = $derived(
-    manifest.find((w) => w.id === $currentWork) || manifest[0],
+    manifest.find((w: any) => w.id === $currentWork) || manifest[0],
   );
   let numBooks = $derived(selectedWorkMeta?.books?.length || 1);
 

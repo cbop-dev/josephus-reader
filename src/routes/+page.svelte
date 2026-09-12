@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { base } from '$app/paths';
   import { currentWork, currentBook } from '$lib/stores/readerStore';
   import HeaderNav from '$lib/components/HeaderNav.svelte';
   import ReaderView from '$lib/components/ReaderView.svelte';
@@ -15,9 +16,9 @@
   onMount(async () => {
     try {
       const [mRes, morphRes, dictRes] = await Promise.all([
-        fetch('/data/manifest.json'),
-        fetch('/data/morph_map.json'),
-        fetch('/data/dictionary.json')
+        fetch(`${base}/data/manifest.json`),
+        fetch(`${base}/data/morph_map.json`),
+        fetch(`${base}/data/dictionary.json`)
       ]);
 
       if (mRes.ok) manifest = await mRes.json();
@@ -35,11 +36,11 @@
   async function loadBookData(work: string, book: number) {
     isLoading = true;
     try {
-      const res = await fetch(`/data/${work}/book-${book}.json`);
+      const res = await fetch(`${base}/data/${work}/book-${book}.json`);
       if (res.ok) {
         bookData = await res.json();
       } else {
-        const fullRes = await fetch(`/data/${work}.json`);
+        const fullRes = await fetch(`${base}/data/${work}.json`);
         if (fullRes.ok) {
           const fullData = await fullRes.json();
           bookData = fullData.books.find((b: any) => b.book === book) || fullData.books[0];

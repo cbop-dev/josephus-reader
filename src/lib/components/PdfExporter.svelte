@@ -11,7 +11,7 @@
   let isGenerating = $state(false);
 
   let sections = $derived(currentBookData?.sections || []);
-  let activeWorkMeta = $derived(manifest.find(w => w.id === $currentWork) || { title: 'Josephus' });
+  let activeWorkMeta = $derived(manifest.find((w: any) => w.id === $currentWork) || { title: 'Josephus' });
   let currentSection = $derived(sections[activeSectionIdx] || sections[0] || { niese: '1', grc: '', eng: '' });
 
   function closeModal() {

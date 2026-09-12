@@ -4,6 +4,9 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
 	preprocess: vitePreprocess(),
+	compilerOptions: {
+		runes: ({ filename }) => (filename.split(/[/\\]/).includes('node_modules') ? undefined : true)
+	},
 	kit: {
 		adapter: adapter({
 			pages: 'build',
@@ -11,8 +14,12 @@ const config = {
 			fallback: '404.html',
 			precompress: false,
 			strict: true
-		})
+		}),
+		paths: {
+			base: process.env.BASE_PATH !== undefined ? process.env.BASE_PATH : (process.env.NODE_ENV === 'production' ? '/josephus-site' : '')
+		}
 	}
 };
 
 export default config;
+
