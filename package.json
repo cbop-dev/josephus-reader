@@ -1,7 +1,8 @@
 {
 	"name": "josephus-reader",
 	"private": true,
-	"version": "0.0.6",
+	"version": "0.0.7",
+	"repository": "https://github.com/cbop-dev/josephus-reader",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",

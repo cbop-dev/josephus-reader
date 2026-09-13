@@ -1,4 +1,5 @@
 <script lang="ts">
+  import pkg from "../../../package.json";
   import {
     currentWork,
     currentBook,
@@ -64,6 +65,15 @@
       <div class="brand">
         <h1 class="logo-title">JOSEPHUS</h1>
         <span class="sub-title">Greek & English Reader</span>
+        <a
+          href={pkg.repository || "https://github.com/cbop-dev/josephus-reader"}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="version-badge"
+          title="View Josephus Reader v{pkg.version} on GitHub"
+        >
+          v{pkg.version}
+        </a>
       </div>
 
       <!-- Always Visible Work & Book Selector -->
@@ -345,8 +355,8 @@
 
   .brand {
     display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 0.4rem;
   }
 
   .logo-title {
@@ -361,6 +371,33 @@
     font-family: var(--font-sans);
     font-size: 0.85rem;
     color: var(--text-muted);
+  }
+
+  .version-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-sans);
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--accent-color);
+    background-color: var(--accent-light);
+    border: 1px solid var(--border-color);
+    padding: 0.18rem 0.45rem;
+    border-radius: 9999px;
+    letter-spacing: 0.02em;
+    user-select: none;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .version-badge:hover {
+    background-color: var(--accent-color);
+    color: #ffffff;
+    border-color: var(--accent-color);
   }
 
   .hamburger-btn {
