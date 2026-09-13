@@ -2,9 +2,11 @@
   import {
     viewMode,
     morphEnabled,
+    fontSize,
     searchQuery
   } from '$lib/stores/readerStore';
   import GreekWord from './GreekWord.svelte';
+  import SectionNavPill from './SectionNavPill.svelte';
 
   let {
     bookData = null,
@@ -51,7 +53,7 @@
   }
 </script>
 
-<div class="reader-container">
+<div class="reader-container" style="--reader-font-size: {$fontSize}px;">
   {#if !bookData}
     <div class="loading-state">
       <div class="spinner"></div>
@@ -142,6 +144,7 @@
         </div>
       {/each}
     </div>
+    <SectionNavPill sections={filteredSections} />
   {/if}
 </div>
 
@@ -263,13 +266,13 @@
 
   .greek-body {
     font-family: var(--font-greek);
-    font-size: 1.25rem;
+    font-size: calc(var(--reader-font-size, 19px) * 1.05);
     line-height: 1.8;
   }
 
   .english-body {
     font-family: var(--font-english);
-    font-size: 1.1rem;
+    font-size: var(--reader-font-size, 19px);
     line-height: 1.75;
   }
 

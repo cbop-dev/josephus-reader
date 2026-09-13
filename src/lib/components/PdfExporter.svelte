@@ -1,29 +1,56 @@
 <script lang="ts">
-  import { showPdfModal, currentWork, currentBook } from '$lib/stores/readerStore';
-  import { jsPDF } from 'jspdf';
-  import html2canvas from 'html2canvas';
+  import {
+    showPdfModal,
+    currentWork,
+    currentBook,
+  } from "$lib/stores/readerStore";
+  import { jsPDF } from "jspdf";
+  import html2canvas from "html2canvas";
 
-  let { manifest = [], currentBookData = null } = $props<{ manifest?: any[]; currentBookData?: any }>();
+  let { manifest = [], currentBookData = null } = $props<{
+    manifest?: any[];
+    currentBookData?: any;
+  }>();
 
-  let pageSize = $state<'a4' | 'letter' | 'a5' | 'b5' | '6x9'>('a4');
-  let printLayout = $state<'facing' | 'twocol'>('facing');
+  let pageSize = $state<"a4" | "letter" | "a5" | "b5" | "6x9">("a4");
+  let printLayout = $state<"facing" | "twocol">("facing");
   let activeSectionIdx = $state(0);
   let isGenerating = $state(false);
 
   let sections = $derived(currentBookData?.sections || []);
-  let activeWorkMeta = $derived(manifest.find((w: any) => w.id === $currentWork) || { title: 'Josephus' });
-  let currentSection = $derived(sections[activeSectionIdx] || sections[0] || { niese: '1', grc: '', eng: '' });
+  let activeWorkMeta = $derived(
+    manifest.find((w: any) => w.id === $currentWork) || { title: "Josephus" },
+  );
+  let currentSection = $derived(
+    sections[activeSectionIdx] ||
+      sections[0] || { niese: "1", grc: "", eng: "" },
+  );
 
   function closeModal() {
     $showPdfModal = false;
   }
+
+  $effect(() => {
+    if ($showPdfModal && sections.length > 0) {
+      for (let i = 0; i < sections.length; i++) {
+        const el = document.getElementById(`sec-${sections[i].niese}`);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= window.innerHeight / 2 && rect.bottom >= 100) {
+            activeSectionIdx = i;
+            break;
+          }
+        }
+      }
+    }
+  });
 
   async function downloadPDF() {
     isGenerating = true;
 
     try {
       // Ensure web fonts (Gentium Book Plus, etc.) are 100% loaded before canvas capture
-      if (typeof document !== 'undefined' && document.fonts) {
+      if (typeof document !== "undefined" && document.fonts) {
         await document.fonts.ready;
       }
 
@@ -32,82 +59,82 @@
         letter: [215.9, 279.4],
         a5: [148, 210],
         b5: [176, 250],
-        '6x9': [152.4, 228.6]
+        "6x9": [152.4, 228.6],
       };
 
       const [width, height] = formatMap[pageSize] || [210, 297];
 
-      const workTitle = activeWorkMeta.title || 'Josephus';
-      const secLabel = currentSection.niese || '1';
+      const workTitle = activeWorkMeta.title || "Josephus";
+      const secLabel = currentSection.niese || "1";
 
-      if (printLayout === 'facing') {
+      if (printLayout === "facing") {
         // FACING PAGES: Capture Left (Greek) and Right (English) pages separately
-        const leftPageEl = document.getElementById('render-page-left');
-        const rightPageEl = document.getElementById('render-page-right');
+        const leftPageEl = document.getElementById("render-page-left");
+        const rightPageEl = document.getElementById("render-page-right");
 
-        if (!leftPageEl || !rightPageEl) throw new Error('Render elements missing');
+        if (!leftPageEl || !rightPageEl)
+          throw new Error("Render elements missing");
 
         // Render Left Page (Greek) to Canvas
         const canvasLeft = await html2canvas(leftPageEl, {
           scale: 2.5,
           useCORS: true,
-          backgroundColor: '#ffffff'
+          backgroundColor: "#ffffff",
         });
 
         // Render Right Page (English) to Canvas
         const canvasRight = await html2canvas(rightPageEl, {
           scale: 2.5,
           useCORS: true,
-          backgroundColor: '#ffffff'
+          backgroundColor: "#ffffff",
         });
 
         const doc = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: [width, height]
+          orientation: "portrait",
+          unit: "mm",
+          format: [width, height],
         });
 
         // Add Left Page Image
-        const imgLeftData = canvasLeft.toDataURL('image/jpeg', 0.95);
-        doc.addImage(imgLeftData, 'JPEG', 0, 0, width, height);
+        const imgLeftData = canvasLeft.toDataURL("image/jpeg", 0.95);
+        doc.addImage(imgLeftData, "JPEG", 0, 0, width, height);
 
         // Add Right Page Image
-        doc.addPage([width, height], 'portrait');
-        const imgRightData = canvasRight.toDataURL('image/jpeg', 0.95);
-        doc.addImage(imgRightData, 'JPEG', 0, 0, width, height);
+        doc.addPage([width, height], "portrait");
+        const imgRightData = canvasRight.toDataURL("image/jpeg", 0.95);
+        doc.addImage(imgRightData, "JPEG", 0, 0, width, height);
 
-        const safeWork = workTitle.replace(/[^\w]/g, '_');
-        const safeSec = secLabel.replace(/[^\w]/g, '_');
+        const safeWork = workTitle.replace(/[^\w]/g, "_");
+        const safeSec = secLabel.replace(/[^\w]/g, "_");
         doc.save(`Josephus_${safeWork}_Sec_${safeSec}_Facing.pdf`);
-
       } else {
         // 2-COLUMN PARALLEL: Capture Single 2-Column Page
-        const twocolEl = document.getElementById('render-page-twocol');
-        if (!twocolEl) throw new Error('Render element missing');
+        const twocolEl = document.getElementById("render-page-twocol");
+        if (!twocolEl) throw new Error("Render element missing");
 
         const canvasTwocol = await html2canvas(twocolEl, {
           scale: 2.5,
           useCORS: true,
-          backgroundColor: '#ffffff'
+          backgroundColor: "#ffffff",
         });
 
         const doc = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: [width, height]
+          orientation: "portrait",
+          unit: "mm",
+          format: [width, height],
         });
 
-        const imgData = canvasTwocol.toDataURL('image/jpeg', 0.95);
-        doc.addImage(imgData, 'JPEG', 0, 0, width, height);
+        const imgData = canvasTwocol.toDataURL("image/jpeg", 0.95);
+        doc.addImage(imgData, "JPEG", 0, 0, width, height);
 
-        const safeWork = workTitle.replace(/[^\w]/g, '_');
-        const safeSec = secLabel.replace(/[^\w]/g, '_');
+        const safeWork = workTitle.replace(/[^\w]/g, "_");
+        const safeSec = secLabel.replace(/[^\w]/g, "_");
         doc.save(`Josephus_${safeWork}_Sec_${safeSec}_TwoColumn.pdf`);
       }
 
       $showPdfModal = false;
     } catch (err) {
-      console.error('Error generating PDF:', err);
+      console.error("Error generating PDF:", err);
     } finally {
       isGenerating = false;
     }
@@ -122,48 +149,69 @@
     <div class="modal-content" onclick={(e) => e.stopPropagation()}>
       <div class="modal-header">
         <div class="header-title">
-          <h2>Direct PDF Document Exporter</h2>
-          <span class="sub-label">High-Resolution Polytonic Greek & English PDF</span>
+          <h2>Export to PDF</h2>
         </div>
         <button class="close-btn" onclick={closeModal}>✕</button>
       </div>
 
       <div class="modal-body">
-        <!-- Target Section Info Badge -->
-        <div class="section-target-box">
-          <span class="target-label">Export Target:</span>
-          <span class="target-badge">Section § {currentSection.niese}</span>
+        <!-- Section Block Selector -->
+        <div class="form-group">
+          <label for="export-section-select">Section Block to Export:</label>
+          <select
+            id="export-section-select"
+            bind:value={activeSectionIdx}
+            class="form-select"
+          >
+            {#each sections as sec, i}
+              <option value={i}>Section § {sec.niese}</option>
+            {/each}
+          </select>
         </div>
 
         <!-- Layout Option Selector -->
         <div class="form-group">
-          <label for="print-layout">Select PDF Document Layout:</label>
-          <select id="print-layout" bind:value={printLayout} class="form-select">
-            <option value="facing">Facing Pages (Page 1: Greek, Page 2: English)</option>
-            <option value="twocol">2-Column Parallel (Greek & English on same page)</option>
+          <label for="print-layout">PDF Document Layout:</label>
+          <select
+            id="print-layout"
+            bind:value={printLayout}
+            class="form-select"
+          >
+            <option value="facing"
+              >Facing Pages (Page 1: Greek, Page 2: English)</option
+            >
+            <option value="twocol"
+              >2-Column Parallel (Greek & English on same page)</option
+            >
           </select>
         </div>
 
         <!-- Page Format Selector -->
         <div class="form-group">
-          <label for="page-size">Select Target Page Size:</label>
+          <label for="page-size">Target Page Size:</label>
           <select id="page-size" bind:value={pageSize} class="form-select">
             <option value="a4">A4 (210 x 297 mm) - Standard</option>
-            <option value="letter">US Letter (8.5 x 11 in) - North American Standard</option>
+            <option value="letter"
+              >US Letter (8.5 x 11 in) - North American Standard</option
+            >
             <option value="a5">A5 (148 x 210 mm) - Compact Handbook</option>
             <option value="b5">B5 (176 x 250 mm) - Academic Monograph</option>
-            <option value="6x9">6 x 9 in (152 x 229 mm) - Trade Paperback</option>
+            <option value="6x9"
+              >6 x 9 in (152 x 229 mm) - Trade Paperback</option
+            >
           </select>
         </div>
 
         <!-- Visual Layout Diagram -->
         <div class="facing-diagram">
-          {#if printLayout === 'facing'}
+          {#if printLayout === "facing"}
             <div class="page-preview left-page">
               <div class="page-header">GREEK (PAGE 1)</div>
               <div class="page-content-preview">
                 <span class="preview-sec-badge">§ {currentSection.niese}</span>
-                <p class="preview-grc">{currentSection.grc?.slice(0, 90) || ''}...</p>
+                <p class="preview-grc">
+                  {currentSection.grc?.slice(0, 90) || ""}...
+                </p>
               </div>
               <div class="page-num">Left Page</div>
             </div>
@@ -172,7 +220,9 @@
               <div class="page-header">ENGLISH (PAGE 2)</div>
               <div class="page-content-preview">
                 <span class="preview-sec-badge">§ {currentSection.niese}</span>
-                <p class="preview-eng">{currentSection.eng?.slice(0, 90) || ''}...</p>
+                <p class="preview-eng">
+                  {currentSection.eng?.slice(0, 90) || ""}...
+                </p>
               </div>
               <div class="page-num">Right Page</div>
             </div>
@@ -181,12 +231,20 @@
               <div class="page-header">2-COLUMN PARALLEL (PAGE 1)</div>
               <div class="page-twocol-preview">
                 <div class="preview-col">
-                  <span class="preview-sec-badge">GRK § {currentSection.niese}</span>
-                  <p class="preview-grc">{currentSection.grc?.slice(0, 70) || ''}...</p>
+                  <span class="preview-sec-badge"
+                    >GRK § {currentSection.niese}</span
+                  >
+                  <p class="preview-grc">
+                    {currentSection.grc?.slice(0, 70) || ""}...
+                  </p>
                 </div>
                 <div class="preview-col">
-                  <span class="preview-sec-badge">ENG § {currentSection.niese}</span>
-                  <p class="preview-eng">{currentSection.eng?.slice(0, 70) || ''}...</p>
+                  <span class="preview-sec-badge"
+                    >ENG § {currentSection.niese}</span
+                  >
+                  <p class="preview-eng">
+                    {currentSection.eng?.slice(0, 70) || ""}...
+                  </p>
                 </div>
               </div>
               <div class="page-num">Same Page</div>
@@ -197,12 +255,16 @@
 
       <div class="modal-footer">
         <button class="btn secondary-btn" onclick={closeModal}>Cancel</button>
-        <button class="btn primary-btn" onclick={downloadPDF} disabled={isGenerating}>
+        <button
+          class="btn primary-btn"
+          onclick={downloadPDF}
+          disabled={isGenerating}
+        >
           {#if isGenerating}
             <span class="btn-spinner"></span>
             <span>Generating High-Res PDF...</span>
           {:else}
-            <span>📥 Download PDF File (.pdf)</span>
+            <span>📥 Download PDF</span>
           {/if}
         </button>
       </div>
@@ -220,7 +282,7 @@
     </div>
     <div class="pdf-render-body">
       <h3 class="pdf-sec-heading">§ {currentSection.niese}</h3>
-      <p class="pdf-greek-text">{currentSection.grc.replace(/\[\d+\]/g, '')}</p>
+      <p class="pdf-greek-text">{currentSection.grc.replace(/\[\d+\]/g, "")}</p>
     </div>
     <div class="pdf-render-footer">
       <span>Page 2 (Greek Facing Page)</span>
@@ -231,7 +293,7 @@
   <div id="render-page-right" class="pdf-render-page">
     <div class="pdf-render-header">
       <span>{activeWorkMeta.title.toUpperCase()}</span>
-      <span>{currentBookData?.title?.toUpperCase() || ''}</span>
+      <span>{currentBookData?.title?.toUpperCase() || ""}</span>
     </div>
     <div class="pdf-render-body">
       <h3 class="pdf-sec-heading">§ {currentSection.niese}</h3>
@@ -246,14 +308,19 @@
   <div id="render-page-twocol" class="pdf-render-page">
     <div class="pdf-render-header">
       <span>FLAVIUS JOSEPHUS</span>
-      <span>{activeWorkMeta.title.toUpperCase()} — {currentBookData?.title?.toUpperCase() || ''}</span>
+      <span
+        >{activeWorkMeta.title.toUpperCase()} — {currentBookData?.title?.toUpperCase() ||
+          ""}</span
+      >
     </div>
     <div class="pdf-render-body">
       <h3 class="pdf-sec-heading">§ {currentSection.niese}</h3>
       <div class="pdf-twocol-grid">
         <div class="pdf-col">
           <h4 class="pdf-col-title">GREEK TEXT</h4>
-          <p class="pdf-greek-text">{currentSection.grc.replace(/\[\d+\]/g, '')}</p>
+          <p class="pdf-greek-text">
+            {currentSection.grc.replace(/\[\d+\]/g, "")}
+          </p>
         </div>
         <div class="pdf-col">
           <h4 class="pdf-col-title">ENGLISH TRANSLATION</h4>
@@ -275,9 +342,9 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
-    z-index: 200;
+    background-color: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(3px);
+    z-index: 2000;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -290,7 +357,10 @@
     border: 1px solid var(--border-color);
     border-radius: 12px;
     width: 100%;
-    max-width: 580px;
+    max-width: 540px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
     box-shadow: var(--shadow-lg);
     overflow: hidden;
   }
@@ -299,20 +369,16 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.25rem 1.5rem;
+    padding: 0.85rem 1.25rem;
     border-bottom: 1px solid var(--border-color);
     background-color: var(--bg-secondary);
   }
 
   .header-title h2 {
     font-family: var(--font-sans);
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 700;
-  }
-
-  .sub-label {
-    font-size: 0.8rem;
-    color: var(--text-muted);
+    margin: 0;
   }
 
   .close-btn {
@@ -321,69 +387,44 @@
   }
 
   .modal-body {
-    padding: 1.5rem;
+    padding: 0.85rem 1.25rem;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-  }
-
-  .section-target-box {
-    display: flex;
-    align-items: center;
     gap: 0.75rem;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-  }
-
-  .target-label {
-    font-family: var(--font-sans);
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-  }
-
-  .target-badge {
-    font-family: var(--font-sans);
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: var(--accent-color);
-    background-color: var(--accent-light);
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
+    overflow-y: auto;
+    max-height: calc(85vh - 110px);
   }
 
   .form-group {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.25rem;
   }
 
   label {
     font-family: var(--font-sans);
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 600;
     color: var(--text-secondary);
   }
 
   .form-select {
-    padding: 0.5rem;
-    border-radius: 6px;
+    padding: 0.35rem 0.6rem;
+    border-radius: 5px;
     border: 1px solid var(--border-color);
     background-color: var(--bg-primary);
     color: var(--text-primary);
     font-family: var(--font-sans);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 
   .facing-diagram {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.6rem;
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 1rem;
+    padding: 0.6rem;
     justify-content: center;
   }
 
@@ -392,9 +433,9 @@
     color: #000000;
     border: 1px solid #ccc;
     border-radius: 4px;
-    width: 210px;
-    height: 170px;
-    padding: 0.65rem;
+    width: 190px;
+    height: 110px;
+    padding: 0.45rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -402,7 +443,7 @@
   }
 
   .single-page-preview {
-    width: 320px;
+    width: 280px;
   }
 
   .page-header {
@@ -432,21 +473,19 @@
   .preview-sec-badge {
     font-size: 0.6rem;
     font-weight: 700;
-    color: #8C3A2B;
+    color: #8c3a2b;
   }
 
   .preview-grc {
     font-family: var(--font-greek);
     font-size: 0.62rem;
     line-height: 1.2;
-
   }
 
   .preview-eng {
     font-family: var(--font-english);
     font-size: 0.62rem;
     line-height: 1.2;
-
   }
 
   .page-num {
@@ -539,7 +578,7 @@
     font-family: var(--font-sans);
     font-size: 14px;
     font-weight: 700;
-    color: #8C3A2B;
+    color: #8c3a2b;
     margin-bottom: 16px;
   }
 

@@ -18,8 +18,9 @@ git clone https://github.com/cbop-dev/josephus-reader/
 cd josephus-reader
 npm install
 
+
 ## run a dev version locally:
-npm run dev
+npm run check && npm run dev
 
 ## build the static site:
 npm run build
