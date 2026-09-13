@@ -21,4 +21,6 @@ export const fontSize = writable<number>(19);
 export const selectedWord = writable<SelectedWordInfo | null>(null);
 export const showLexiconModal = writable<boolean>(false);
 export const showPdfModal = writable<boolean>(false);
+export const showAttributionModal = writable<boolean>(false);
 export const searchQuery = writable<string>('');
+

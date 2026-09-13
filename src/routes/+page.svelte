@@ -6,6 +6,7 @@
   import ReaderView from '$lib/components/ReaderView.svelte';
   import LexiconModal from '$lib/components/LexiconModal.svelte';
   import PdfExporter from '$lib/components/PdfExporter.svelte';
+  import AttributionModal from '$lib/components/AttributionModal.svelte';
 
   let manifest = $state<any[]>([]);
   let morphMap = $state<Record<string, { lemma: string; parse: string; desc: string }>>({});
@@ -81,6 +82,7 @@
 
   <LexiconModal />
   <PdfExporter {manifest} currentBookData={bookData} />
+  <AttributionModal />
 </div>
 
 <style>

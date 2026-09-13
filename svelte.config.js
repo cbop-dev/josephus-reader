@@ -16,7 +16,7 @@ const config = {
 			strict: true
 		}),
 		paths: {
-			base: process.env.BASE_PATH !== undefined ? process.env.BASE_PATH : (process.env.NODE_ENV === 'production' ? '/josephus-site' : '')
+			base: process.env.BASE_PATH !== undefined ? process.env.BASE_PATH : (process.env.NODE_ENV === 'production' ? '/josephus-reader' : '')
 		}
 	}
 };

@@ -6,6 +6,7 @@
     theme,
     morphEnabled,
     showPdfModal,
+    showAttributionModal,
     type WorkId,
   } from "$lib/stores/readerStore";
 
@@ -176,6 +177,16 @@
           <path d="M6 14h12v8H6z" />
         </svg>
         <span>PDF</span>
+      </button>
+
+      <!-- Source Data & License Attribution Button -->
+      <button
+        class="btn icon-btn info-btn"
+        onclick={() => ($showAttributionModal = true)}
+        title="Source Data & License Attribution (CC BY-SA 4.0)"
+        aria-label="Source Data and License Info"
+      >
+        <span class="info-sym">🛈</span>
       </button>
     </div>
   </div>
