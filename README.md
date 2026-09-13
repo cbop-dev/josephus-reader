@@ -9,7 +9,7 @@ A parallel Greek/English reader of the complete works of Flavius Josephus. [See 
 Python scripts (in `/scripts` and) were used to grab the data, which was processed and stored in `/static/data`. A SvelteKit project is then what builds the static html/js site, which is then stored in `/build`.
 
 
-You can also read these works on the Tufts University's (Scaife Viewer)[https://scaife.perseus.org/library/urn:cts:greekLit:tlg0526/]. 
+You can also read these works on the Tufts University's [Scaife Viewer](https://scaife.perseus.org/library/urn:cts:greekLit:tlg0526/). 
 
 ## Installation
 
@@ -25,8 +25,9 @@ npm run check && npm run dev
 ## build the static site:
 npm run build
 
-## preview the production statis site:
+## preview the static site:
 npm run preview
+
 ```
 
 The result is a roughly ~54 MB folder which can be hosted on any http server. This site is currently live at: [https://cbop-dev.github.io/josephus-reader/](https://cbop-dev.github.io/josephus-reader/)
