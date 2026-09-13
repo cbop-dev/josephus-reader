@@ -23,6 +23,7 @@ export interface LsjEntry {
   key: string;
   greek_key?: string;
   lemma?: string;
+  gloss?: string;
   def: string;
 }
 

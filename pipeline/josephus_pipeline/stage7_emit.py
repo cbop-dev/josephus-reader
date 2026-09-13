@@ -29,6 +29,13 @@ def get_greek_bucket(text: str) -> str:
     return greek_buckets.get(ch, "other")
 
 
+ALL_BUCKETS = [
+    'alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta',
+    'iota', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'omicron', 'pi',
+    'rho', 'sigma', 'tau', 'upsilon', 'phi', 'chi', 'psi', 'omega', 'other'
+]
+
+
 def save_merged_json(file_path: Path, new_data: dict):
     existing = {}
     if file_path.exists():
@@ -120,22 +127,25 @@ def run_stage7(manifest: Manifest) -> dict:
             with open(b_file, "w", encoding="utf-8") as f:
                 json.dump(book, f, ensure_ascii=False, indent=2)
 
-        # Write sharded morph map (merging across works)
+        # Write sharded morph map for ALL 25 buckets
         morph_dir = target / "morph"
         morph_dir.mkdir(parents=True, exist_ok=True)
-        for bucket, shard_data in morph_shards.items():
+        for bucket in ALL_BUCKETS:
+            shard_data = morph_shards.get(bucket, {})
             save_merged_json(morph_dir / f"{bucket}.json", shard_data)
 
-        # Write sharded dictionary (merging across works)
+        # Write sharded dictionary for ALL 25 buckets
         dict_dir = target / "dictionary"
         dict_dir.mkdir(parents=True, exist_ok=True)
-        for bucket, shard_data in dict_shards.items():
+        for bucket in ALL_BUCKETS:
+            shard_data = dict_shards.get(bucket, {})
             save_merged_json(dict_dir / f"{bucket}.json", shard_data)
 
-        # Write sharded lemmata (merging across works)
+        # Write sharded lemmata for ALL 25 buckets
         lemmata_dir = target / "lemmata"
         lemmata_dir.mkdir(parents=True, exist_ok=True)
-        for bucket, shard_data in lemmata_shards.items():
+        for bucket in ALL_BUCKETS:
+            shard_data = lemmata_shards.get(bucket, {})
             save_merged_json(lemmata_dir / f"{bucket}.json", shard_data)
 
         # Write top-level summary files (merging across works)
@@ -143,6 +153,6 @@ def run_stage7(manifest: Manifest) -> dict:
         save_merged_json(target / "dictionary.json", lsj_map)
         save_merged_json(lemmata_dir / "_index.json", lemmata_index)
 
-    print(f"  [Stage 7] {work_id}: Emitted sharded JSON dataset ({len(morph_shards)} letter buckets) to app/public/data and static/data.")
+    print(f"  [Stage 7] {work_id}: Emitted sharded JSON dataset (25 letter buckets) to app/public/data and static/data.")
     return work_data
 

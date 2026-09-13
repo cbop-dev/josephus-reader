@@ -74,9 +74,206 @@
   color-scheme:   dark;
 }
 
+/* Sepia Theme */
+[data-theme="sepia"] {
+  --col-bg:       #f4ecd8;
+  --page-bg:      #e9e0cb;
+  --text:         #433422;
+  --text-mid:     #6a553b;
+  --text-light:   #8a7253;
+  --accent:       #8c4a1b;
+  --accent-light: #b86b32;
+  --border:       #d8ccb0;
+  --popup-bg:     #f8f2e2;
+  --popup-shadow: 0 4px 24px rgba(67,52,34,.2);
+  --greek-hover:        rgba(140, 74, 27, 0.12);
+  --greek-hover-border: rgba(140, 74, 27, 0.25);
+  --greek-active: #f1dfc5;
+
+  --on-accent:    #fdfaf3;
+  --input-bg:     #f8f2e2;
+  --hit-bg:       #f7d6a5;
+  --target-bg:    #fbebcf;
+  --mark-bg:      #f7d6a5;
+  --error:        #b22323;
+  color-scheme:   light;
+}
+
 body {
   background-color: var(--page-bg);
   color: var(--text);
   font-family: var(--font-ui);
   line-height: 1.5;
+}
+
+/* ── Word Morph Popup Modal ───────────────────────────────────────── */
+.word-popup-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9999 !important;
+  display: flex !important;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+@media (min-width: 640px) {
+  .word-popup-backdrop {
+    align-items: center;
+  }
+}
+
+.word-popup-card {
+  background-color: var(--popup-bg, #ffffff);
+  color: var(--text, #171a1c);
+  border: 1px solid var(--border, #d4d8d3);
+  border-radius: 12px 12px 0 0;
+  width: 92%;
+  max-width: 540px;
+  max-height: 80vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 1.25rem;
+  box-shadow: var(--popup-shadow, 0 10px 30px rgba(0, 0, 0, 0.2));
+  box-sizing: border-box;
+}
+
+.word-popup-card.maximized {
+  width: 95vw !important;
+  max-width: 900px !important;
+  height: 90vh !important;
+  max-height: 90vh !important;
+}
+
+.word-popup-card.maximized .word-popup-body {
+  max-height: calc(90vh - 4.5rem) !important;
+}
+
+.word-popup-card.maximized .dict-def {
+  max-height: calc(90vh - 12rem) !important;
+}
+
+@media (min-width: 640px) {
+  .word-popup-card {
+    border-radius: 12px;
+  }
+}
+
+.word-popup-body {
+  overflow-y: auto !important;
+  max-height: calc(80vh - 4.5rem) !important;
+  padding-right: 0.25rem;
+}
+
+.dict-def {
+  max-height: 260px !important;
+  overflow-y: auto !important;
+  word-break: break-word;
+}
+
+.word-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border, #d4d8d3);
+  padding-bottom: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.popup-word {
+  font-family: var(--font-greek, serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent, #1f6f7a);
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-mid, #545b5c);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.close-btn:hover {
+  color: var(--text, #171a1c);
+}
+
+.morph-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.lemma-line {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.label {
+  font-size: 0.85rem;
+  color: var(--text-mid, #545b5c);
+  text-transform: uppercase;
+}
+
+.lemma-value {
+  font-family: var(--font-greek, serif);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.parse-tag {
+  display: inline-block;
+  background-color: var(--page-bg, #eceee7);
+  border: 1px solid var(--border, #d4d8d3);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent, #1f6f7a);
+  margin-right: 0.5rem;
+}
+
+.parse-desc {
+  font-size: 0.88rem;
+  color: var(--text-mid, #545b5c);
+}
+
+.dict-section {
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border, #d4d8d3);
+}
+
+.dict-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-mid, #545b5c);
+  margin-bottom: 0.4rem;
+}
+
+.dict-def {
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.concordance-link {
+  display: inline-block;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent, #1f6f7a);
+  text-decoration: underline;
+}
+
+.popup-status {
+  font-size: 0.9rem;
+  color: var(--text-mid, #545b5c);
+  padding: 1rem 0;
 }

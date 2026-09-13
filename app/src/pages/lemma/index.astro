@@ -1,0 +1,273 @@
+---
+import ThemeInit from '../../components/ThemeInit.astro';
+import ThemeToggle from '../../components/ThemeToggle.astro';
+import '@shared/styles/global.css';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lemma Concordance — Josephus Reader</title>
+    <ThemeInit />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&family=EB+Garamond:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
+  </head>
+  <body class="lemma-body">
+    <div class="lemma-container">
+      <header class="lemma-header">
+        <div class="header-nav">
+          <a href={base || '/'} class="back-link">← Return to Josephus Reader Library</a>
+          <ThemeToggle />
+        </div>
+        <h1 id="lemma-head" class="lemma-title">Concordance</h1>
+        <p id="lemma-sub" class="lemma-sub">Occurrence summary across Flavius Josephus</p>
+      </header>
+
+      <main class="lemma-content">
+        <div id="loading-state" class="status-card">Loading concordance occurrences...</div>
+        <div id="results-card" class="lemma-card" style="display: none;">
+          <div class="summary-box">
+            <span class="count-badge" id="count-badge">0 occurrences</span>
+            <span class="norm-label" id="norm-label"></span>
+          </div>
+
+          <div class="occurrences-section">
+            <h3>Occurrences in Corpus</h3>
+            <ul id="occurrences-list" class="occurrences-list"></ul>
+          </div>
+        </div>
+        <div id="error-state" class="status-card error-card" style="display: none;">Lemma not found in corpus.</div>
+      </main>
+    </div>
+
+    <script is:inline define:vars={{ base }}>
+      function getGreekBucket(text) {
+        if (!text) return 'other';
+        const norm = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        if (!norm) return 'other';
+        const ch = norm[0].toLowerCase();
+        const map = {
+          'α': 'alpha', 'β': 'beta', 'γ': 'gamma', 'δ': 'delta',
+          'ε': 'epsilon', 'ζ': 'zeta', 'η': 'eta', 'θ': 'theta',
+          'ι': 'iota', 'κ': 'kappa', 'λ': 'lambda', 'μ': 'mu',
+          'ν': 'nu', 'ξ': 'xi', 'ο': 'omicron', 'π': 'pi',
+          'ρ': 'rho', 'σ': 'sigma', 'ς': 'sigma', 'τ': 'tau',
+          'υ': 'upsilon', 'φ': 'phi', 'χ': 'chi', 'ψ': 'psi',
+          'ω': 'omega'
+        };
+        return map[ch] || 'other';
+      }
+
+      async function loadLemma() {
+        const params = new URLSearchParams(window.location.search);
+        let wordKey = params.get('w') || params.get('slug') || '';
+        
+        // Fallback: extract from URL path if present
+        if (!wordKey) {
+          const parts = window.location.pathname.split('/').filter(Boolean);
+          const last = parts[parts.length - 1];
+          if (last && last !== 'lemma') {
+            wordKey = decodeURIComponent(last);
+          }
+        }
+
+        if (!wordKey) {
+          document.getElementById('loading-state').style.display = 'none';
+          document.getElementById('error-state').textContent = 'No lemma specified.';
+          document.getElementById('error-state').style.display = 'block';
+          return;
+        }
+
+        const bucket = getGreekBucket(wordKey);
+        const url = `${base}/data/lemmata/${bucket}.json`;
+
+        try {
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error('Data fetch failed');
+          const data = await resp.json();
+
+          // Find key matching wordKey (exact or stripped)
+          const normKey = wordKey.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/ς/g, 'σ');
+          const entry = data[wordKey] || data[normKey] || Object.values(data).find(e => e.lemma === wordKey);
+
+          document.getElementById('loading-state').style.display = 'none';
+
+          if (!entry) {
+            document.getElementById('lemma-head').textContent = wordKey;
+            document.getElementById('error-state').style.display = 'block';
+            return;
+          }
+
+          document.getElementById('lemma-head').textContent = entry.lemma || wordKey;
+          document.title = `Lemma: ${entry.lemma || wordKey} — Josephus Concordance`;
+
+          document.getElementById('count-badge').textContent = `${entry.count || (entry.occurrences ? entry.occurrences.length : 0)} occurrence(s)`;
+          document.getElementById('norm-label').textContent = `Normalized: ${normKey}`;
+
+          const listEl = document.getElementById('occurrences-list');
+          listEl.innerHTML = '';
+
+          const occurrences = entry.occurrences || [];
+          if (occurrences.length === 0) {
+            listEl.innerHTML = '<li>No occurrences recorded.</li>';
+          } else {
+            occurrences.forEach(occ => {
+              const li = document.createElement('li');
+              li.className = 'occ-item';
+              
+              const secRef = occ.sec ? ` § ${occ.sec}` : '';
+              const targetUrl = `${base}/${occ.work}/book/${occ.book}`;
+              
+              li.innerHTML = `
+                <a class="occ-link" href="${targetUrl}">
+                  <span class="occ-work">${occ.work} Book ${occ.book}${secRef}</span>
+                  <span class="occ-form">${occ.word}</span>
+                </a>
+              `;
+              listEl.appendChild(li);
+            });
+          }
+
+          document.getElementById('results-card').style.display = 'block';
+        } catch (err) {
+          console.error(err);
+          document.getElementById('loading-state').style.display = 'none';
+          document.getElementById('error-state').style.display = 'block';
+        }
+      }
+
+      window.addEventListener('DOMContentLoaded', loadLemma);
+    </script>
+  </body>
+</html>
+
+<style>
+  .lemma-body {
+    background-color: var(--page-bg, #eceee7);
+    color: var(--text, #171a1c);
+    font-family: var(--font-ui, system-ui, sans-serif);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+  .lemma-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+  .header-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  .back-link {
+    color: var(--accent, #1f6f7a);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  .back-link:hover {
+    text-decoration: underline;
+  }
+  .lemma-title {
+    font-family: var(--font-greek, "Cardo", serif);
+    font-size: 3rem;
+    color: var(--accent, #1f6f7a);
+    margin: 0 0 0.4rem 0;
+  }
+  .lemma-sub {
+    color: var(--text-mid, #545b5c);
+    font-size: 1.05rem;
+    margin-bottom: 2rem;
+  }
+  .status-card {
+    background-color: var(--col-bg, #ffffff);
+    border: 1px solid var(--border, #d4d8d3);
+    border-radius: 8px;
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-mid, #545b5c);
+  }
+  .error-card {
+    color: #c53030;
+    border-color: #feb2b2;
+    background-color: #fff5f5;
+  }
+  .lemma-card {
+    background-color: var(--col-bg, #ffffff);
+    border: 1px solid var(--border, #d4d8d3);
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  }
+  .summary-box {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border, #d4d8d3);
+  }
+  .count-badge {
+    background-color: var(--accent, #1f6f7a);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+  }
+  .norm-label {
+    font-size: 0.85rem;
+    color: var(--text-mid, #545b5c);
+    font-style: italic;
+  }
+  .occurrences-section h3 {
+    font-size: 1.1rem;
+    color: var(--text-mid, #545b5c);
+    margin-top: 0;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .occurrences-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .occ-item {
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 6px;
+    transition: background-color 0.15s ease;
+  }
+  .occ-item:hover {
+    background-color: var(--page-bg, #f7fafc);
+  }
+  .occ-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+    color: inherit;
+  }
+  .occ-work {
+    font-weight: 600;
+    color: var(--accent, #1f6f7a);
+    font-size: 0.95rem;
+  }
+  .occ-form {
+    font-family: var(--font-greek, "Cardo", serif);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text, #2d3748);
+  }
+</style>

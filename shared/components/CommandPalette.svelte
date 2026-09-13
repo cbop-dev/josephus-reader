@@ -47,15 +47,15 @@
   });
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 {#if open}
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <div class="cp-backdrop" on:click={close} role="presentation">
+  <div class="cp-backdrop" onclick={close} role="presentation">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-    <div class="cp-card" on:click={(e) => e.stopPropagation()} role="dialog" aria-label="Command Palette">
+    <div class="cp-card" onclick={(e) => e.stopPropagation()} role="dialog" aria-label="Command Palette">
       <div class="cp-header">
         <span class="cp-icon">🔍</span>
         <input
@@ -65,12 +65,12 @@
           bind:value={query}
           autofocus
         />
-        <button class="cp-close" on:click={close}>Esc</button>
+        <button class="cp-close" onclick={close}>Esc</button>
       </div>
 
       <div class="cp-results">
         {#each filtered as w}
-          <a class="cp-item" href={`${base}${workPath(w.id, 1)}`} on:click={close}>
+          <a class="cp-item" href={`${base}${workPath(w.id, 1)}`} onclick={close}>
             <div class="cp-item-title">{w.englishTitle} ({w.title})</div>
             <div class="cp-item-sub">{w.booksCount} {w.booksCount === 1 ? 'book' : 'books'}</div>
           </a>

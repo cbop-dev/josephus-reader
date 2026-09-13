@@ -1,45 +1,98 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import WordPopup from './WordPopup.svelte';
-  import { fetchBook, type BookData, type Section } from '../lib/data';
-  import { getWork, bookLabel } from '../lib/works';
+  import { onMount } from "svelte";
+  import WordPopup from "./WordPopup.svelte";
+  import SectionNavPill from "./SectionNavPill.svelte";
+  import { fetchBook, type BookData, type Section } from "../lib/data";
+  import { getWork, bookLabel } from "../lib/works";
 
-  export let work: string = 'Antiquities';
-  export let bookNum: number = 1;
-  export let bookData: BookData | null = null;
+  let {
+    work = "Antiquities",
+    bookNum = 1,
+    bookData = null,
+  }: {
+    work?: string;
+    bookNum?: number;
+    bookData?: BookData | null;
+  } = $props();
 
-  let sections: Section[] = [];
-  let loading = false;
-  let viewMode: 'parallel' | 'greek' | 'english' | 'stacked' = 'parallel';
-  let fontSize = 18;
-  let morphEnabled = true;
-  let selectedWord: string | null = null;
+  let sections = $state<Section[]>([]);
+  let loading = $state(false);
+  let viewMode = $state<"parallel" | "greek" | "english" | "stacked">(
+    "parallel",
+  );
+  let fontSize = $state(18);
+  let morphEnabled = $state(true);
+  let selectedWord = $state<string | null>(null);
 
-  $: workMeta = getWork(work);
+  let workMeta = $derived(getWork(work));
 
-  $: if (bookData && bookData.sections) {
-    sections = bookData.sections;
-    loading = false;
-  } else {
-    loadBookData(work, bookNum);
-  }
+  $effect(() => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("reader-state-changed", {
+          detail: { viewMode, fontSize, morphEnabled },
+        })
+      );
+    }
+  });
+
+  onMount(() => {
+    const handleSetViewMode = (e: Event) => {
+      const mode = (e as CustomEvent).detail;
+      if (
+        mode === "parallel" ||
+        mode === "stacked" ||
+        mode === "greek" ||
+        mode === "english"
+      ) {
+        viewMode = mode;
+      }
+    };
+    const handleSetFontSize = (e: Event) => {
+      const action = (e as CustomEvent).detail;
+      if (action === "inc") increaseFontSize();
+      if (action === "dec") decreaseFontSize();
+    };
+    const handleToggleMorph = () => {
+      morphEnabled = !morphEnabled;
+    };
+
+    window.addEventListener("reader-set-viewmode", handleSetViewMode);
+    window.addEventListener("reader-set-fontsize", handleSetFontSize);
+    window.addEventListener("reader-toggle-morph", handleToggleMorph);
+
+    return () => {
+      window.removeEventListener("reader-set-viewmode", handleSetViewMode);
+      window.removeEventListener("reader-set-fontsize", handleSetFontSize);
+      window.removeEventListener("reader-toggle-morph", handleToggleMorph);
+    };
+  });
+
+  $effect(() => {
+    if (bookData && bookData.sections) {
+      sections = bookData.sections;
+      loading = false;
+    } else {
+      loadBookData(work, bookNum);
+    }
+  });
 
   function loadBookData(w: string, b: number) {
     loading = true;
     fetchBook(w, b)
-      .then(data => {
+      .then((data) => {
         sections = data.sections || [];
         loading = false;
       })
-      .catch(err => {
-        console.error('Failed to load book data:', err);
+      .catch((err) => {
+        console.error("Failed to load book data:", err);
         loading = false;
       });
   }
 
   function handleWordClick(w: string) {
     if (!morphEnabled) return;
-    const cleanWord = w.replace(/[.,·;:!?"'»«]+$/, '').replace(/^[«»"']/, '');
+    const cleanWord = w.replace(/[.,·;:!?"'»«]+$/, "").replace(/^[«»"']/, "");
     if (cleanWord) {
       selectedWord = cleanWord;
     }
@@ -52,6 +105,11 @@
   function increaseFontSize() {
     fontSize = Math.min(28, fontSize + 2);
   }
+
+  function getWords(text: string): string[] {
+    if (!text) return [];
+    return text.trim().split(/\s+/);
+  }
 </script>
 
 <div class="reader-container" style={`--reader-font-size: ${fontSize}px`}>
@@ -59,90 +117,112 @@
   <div class="controls-strip">
     <div class="controls-group view-modes">
       <button
-        class="ctrl-btn"
-        class:active={viewMode === 'parallel'}
-        on:click={() => (viewMode = 'parallel')}
-        title="Side-by-side Greek & English"
+        class="ctrl-btn icon-btn"
+        class:active={viewMode === "parallel"}
+        onclick={() => (viewMode = "parallel")}
+        title="Side-by-side (Greek & English)"
+        aria-label="Side-by-side view"
       >
-        Side-by-Side
+        ◧
       </button>
       <button
-        class="ctrl-btn"
-        class:active={viewMode === 'greek'}
-        on:click={() => (viewMode = 'greek')}
-        title="Greek text only"
-      >
-        Greek
-      </button>
-      <button
-        class="ctrl-btn"
-        class:active={viewMode === 'english'}
-        on:click={() => (viewMode = 'english')}
-        title="English text only"
-      >
-        English
-      </button>
-      <button
-        class="ctrl-btn"
-        class:active={viewMode === 'stacked'}
-        on:click={() => (viewMode = 'stacked')}
+        class="ctrl-btn icon-btn"
+        class:active={viewMode === "stacked"}
+        onclick={() => (viewMode = "stacked")}
         title="Stacked section text"
+        aria-label="Stacked view"
       >
-        Stacked
+        ⬓
+      </button>
+      <button
+        class="ctrl-btn icon-btn"
+        class:active={viewMode === "greek"}
+        onclick={() => (viewMode = "greek")}
+        title="Greek text only"
+        aria-label="Greek view"
+      >
+        Ω
+      </button>
+      <button
+        class="ctrl-btn icon-btn"
+        class:active={viewMode === "english"}
+        onclick={() => (viewMode = "english")}
+        title="English text only"
+        aria-label="English view"
+      >
+        A
       </button>
     </div>
 
-    <div class="controls-group font-controls">
-      <button class="ctrl-btn font-btn" on:click={decreaseFontSize} disabled={fontSize <= 14} title="Decrease text size">
-        A<sup>-</sup>
-      </button>
+    <h1 class="work-title-heading">
+      {workMeta?.englishTitle || work}{#if workMeta && workMeta.booksCount > 1} — Book {bookNum}{/if}
+    </h1>
 
-      <button class="ctrl-btn font-btn" on:click={increaseFontSize} disabled={fontSize >= 28} title="Increase text size">
-        A<sup>+</sup>
-      </button>
+    <div class="right-controls">
+      <div class="controls-group font-controls">
+        <button
+          class="ctrl-btn font-btn"
+          onclick={decreaseFontSize}
+          disabled={fontSize <= 14}
+          title="Decrease text size"
+        >
+          A<sup>-</sup>
+        </button>
+
+        <button
+          class="ctrl-btn font-btn"
+          onclick={increaseFontSize}
+          disabled={fontSize >= 28}
+          title="Increase text size"
+        >
+          A<sup>+</sup>
+        </button>
+      </div>
+
+      <div class="controls-group morph-controls">
+        <button
+          class="ctrl-btn morph-toggle"
+          class:active={morphEnabled}
+          onclick={() => (morphEnabled = !morphEnabled)}
+          title="Toggle word lookup popups"
+        >
+          Morph
+        </button>
+      </div>
     </div>
-
-    <button
-      class="ctrl-btn morph-toggle"
-      class:active={morphEnabled}
-      on:click={() => (morphEnabled = !morphEnabled)}
-      title="Toggle word lookup popups"
-    >
-      Morph {morphEnabled ? 'On' : 'Off'}
-    </button>
   </div>
 
   <main class="reader-content">
     {#if loading}
       <div class="loading-state">Loading text data...</div>
     {:else if sections.length === 0}
-      <div class="empty-state">No section data available for {work} Book {bookNum}.</div>
+      <div class="empty-state">
+        No section data available for {work} Book {bookNum}.
+      </div>
     {:else}
       <div class={`text-grid view-${viewMode}`}>
-        {#each sections as sec}
+        {#each sections as sec, sIdx (sIdx)}
           <div class="section-row" id={`niese-${sec.section_num || sec.niese}`}>
             <div class="section-badge" title={`Niese Section ${sec.niese}`}>
               § {sec.niese}
             </div>
 
             <div class="columns-wrapper">
-              {#if viewMode === 'parallel' || viewMode === 'greek' || viewMode === 'stacked'}
+              {#if viewMode === "parallel" || viewMode === "greek" || viewMode === "stacked"}
                 <div class="greek-col">
-                  {#each sec.grc.split(/\s+/) as word}
+                  {#each getWords(sec.grc) as word, wIdx (wIdx)}
                     <!-- svelte-ignore a11y_click_events_have_key_events -->
                     <!-- svelte-ignore a11y_no_static_element_interactions -->
                     <span
                       class="greek-word"
                       class:interactive={morphEnabled}
-                      on:click={() => handleWordClick(word)}
-                    >
-                      {word}{' '}
-                    </span>
+                      onclick={() => handleWordClick(word)}>{word}</span
+                    >{" "}
                   {/each}
                 </div>
               {/if}
 
-              {#if viewMode === 'parallel' || viewMode === 'english' || viewMode === 'stacked'}
+              {#if viewMode === "parallel" || viewMode === "english" || viewMode === "stacked"}
                 <div class="english-col">
                   {sec.eng}
                 </div>
@@ -153,6 +233,8 @@
       </div>
     {/if}
   </main>
+
+  <SectionNavPill {sections} {viewMode} />
 
   {#if selectedWord}
     <WordPopup word={selectedWord} onClose={() => (selectedWord = null)} />
@@ -166,6 +248,24 @@
     padding: 1rem 1.5rem;
     font-size: var(--reader-font-size, 18px);
   }
+  .work-title-heading {
+    font-family: var(--font-english, "EB Garamond", Georgia, serif);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text, #171a1c);
+    margin: 0;
+    text-align: center;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 0.5rem;
+  }
+  .right-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
   .controls-strip {
     display: flex;
     align-items: center;
@@ -176,7 +276,6 @@
     border: 1px solid var(--border, #d4d8d3);
     border-radius: 6px;
     margin-bottom: 1.5rem;
-    flex-wrap: wrap;
     position: sticky;
     top: 60px;
     z-index: 50;
@@ -222,6 +321,7 @@
     gap: 0.4rem;
     padding-bottom: 1.25rem;
     border-bottom: 1px solid var(--border, #d4d8d3);
+    scroll-margin-top: 120px;
   }
   .section-badge {
     font-family: var(--font-ui, system-ui, sans-serif);
@@ -236,17 +336,21 @@
   .view-parallel .columns-wrapper {
     grid-template-columns: 1fr 1fr;
   }
-  .view-greek .columns-wrapper, .view-english .columns-wrapper, .view-stacked .columns-wrapper {
+  .view-greek .columns-wrapper,
+  .view-english .columns-wrapper,
+  .view-stacked .columns-wrapper {
     grid-template-columns: 1fr;
   }
   .greek-col {
     font-family: var(--font-greek, "Cardo", Georgia, serif);
     line-height: var(--lh-greek, 1.7);
+    scroll-margin-top: 120px;
   }
   .english-col {
     font-family: var(--font-english, "EB Garamond", Georgia, serif);
     line-height: var(--lh-english, 1.72);
     color: var(--text-mid, #545b5c);
+    scroll-margin-top: 120px;
   }
   .greek-word.interactive {
     cursor: pointer;
@@ -258,7 +362,8 @@
     background-color: var(--greek-hover, rgba(31, 111, 122, 0.12));
     color: var(--accent, #1f6f7a);
   }
-  .loading-state, .empty-state {
+  .loading-state,
+  .empty-state {
     text-align: center;
     padding: 3rem;
     color: var(--text-mid, #545b5c);
@@ -268,9 +373,26 @@
     .view-parallel .columns-wrapper {
       grid-template-columns: 1fr;
     }
+    .section-row,
+    .greek-col,
+    .english-col {
+      scroll-margin-top: 70px;
+    }
     .controls-strip {
-      flex-direction: column;
-      align-items: stretch;
+      display: flex;
+      justify-content: center;
+      padding: 0.55rem 0.75rem;
+      position: static;
+      margin-bottom: 1.25rem;
+    }
+    .controls-strip .view-modes,
+    .controls-strip .right-controls {
+      display: none;
+    }
+    .work-title-heading {
+      font-size: 1.1rem;
+      white-space: normal;
+      padding: 0;
     }
   }
 </style>

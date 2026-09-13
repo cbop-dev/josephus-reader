@@ -1,4 +1,4 @@
-"""Stage 5: LSJ Dictionary Entry Resolution."""
+"""Stage 5: LSJ Dictionary Entry Resolution with BetaCode to Unicode Greek conversion & short gloss extraction."""
 
 from __future__ import annotations
 
@@ -6,26 +6,72 @@ import json
 import glob
 import re
 import unicodedata
+import xml.etree.ElementTree as ET
 from pathlib import Path
+import betacode.conv as betacode
 from .config import Manifest, BUILD_DIR, REPO_ROOT
-
-BETA_MAP = {
-    'a': 'α', 'b': 'β', 'g': 'γ', 'd': 'δ', 'e': 'ε', 'z': 'ζ', 'h': 'η', 'q': 'θ',
-    'i': 'ι', 'k': 'κ', 'l': 'λ', 'm': 'μ', 'n': 'ν', 'c': 'ξ', 'o': 'ο', 'p': 'π',
-    'r': 'ρ', 's': 'σ', 't': 'τ', 'u': 'υ', 'f': 'φ', 'x': 'χ', 'y': 'ψ', 'w': 'ω',
-    'v': 'ϝ'
-}
-
-
-def betacode_to_greek(text: str) -> str:
-    text = text.lower()
-    return "".join(BETA_MAP[c] for c in text if c in BETA_MAP)
 
 
 def strip_accents(text: str) -> str:
     text = unicodedata.normalize("NFD", text)
     text = "".join(c for c in text if unicodedata.category(c) != "Mn")
     return unicodedata.normalize("NFC", text).lower().replace("ς", "σ")
+
+
+def parse_lsj_entry(body_str: str) -> tuple[str, str]:
+    """Parse LSJ entry TEI XML snippet, converting BetaCode Greek to Unicode and extracting short glosses."""
+    xml_str = '<entryFree>' + body_str + '</entryFree>'
+    xml_str = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;)', '&amp;', xml_str)
+
+    try:
+        root = ET.fromstring(xml_str)
+    except Exception:
+        # Fallback if XML parsing fails
+        clean = re.sub(r'<[^>]+>', ' ', body_str)
+        clean = re.sub(r'\s+', ' ', clean).strip()
+        return clean[:3000], ""
+
+    # Extract short translation glosses from <tr...> tags
+    trs = [tr.text.strip() for tr in root.findall('.//tr') if tr.text and tr.text.strip()]
+    seen = set()
+    unique_glosses = [x for x in trs if not (x in seen or seen.add(x))]
+    short_gloss = ', '.join(unique_glosses[:4])
+
+    # Convert Greek BetaCode elements to Polytonic Unicode Greek
+    def convert_greek_nodes(elem, in_greek=False):
+        is_greek = in_greek or elem.attrib.get('lang') == 'greek' or elem.attrib.get('TEIform') in (
+            'orth', 'foreign', 'quote', 'ref', 'itype', 'gen', 'pron'
+        )
+        if is_greek and elem.text:
+            try:
+                elem.text = betacode.beta_to_uni(elem.text)
+            except Exception:
+                pass
+        for child in elem:
+            convert_greek_nodes(child, in_greek=is_greek)
+            if is_greek and child.tail:
+                try:
+                    child.tail = betacode.beta_to_uni(child.tail)
+                except Exception:
+                    pass
+
+    convert_greek_nodes(root)
+
+    # Flatten XML text
+    def get_clean_text(elem):
+        text = elem.text or ''
+        for child in elem:
+            text += get_clean_text(child)
+            if child.tail:
+                text += child.tail
+        return text
+
+    clean_def = get_clean_text(root)
+    clean_def = re.sub(r'\s+', ' ', clean_def).strip()
+    if len(clean_def) > 3500:
+        clean_def = clean_def[:3500] + "..."
+
+    return clean_def, short_gloss
 
 
 def run_stage5(manifest: Manifest) -> dict:
@@ -53,17 +99,19 @@ def run_stage5(manifest: Manifest) -> dict:
             entries = re.findall(r'<entryFree[^>]*key=\"([^\"]+)\"[^>]*>(.*?)</entryFree>', content, re.DOTALL)
             for key, body in entries:
                 raw_key = re.sub(r'\d+$', '', key).strip()
-                greek_key = betacode_to_greek(raw_key)
+                try:
+                    greek_key = betacode.beta_to_uni(raw_key)
+                except Exception:
+                    greek_key = raw_key
                 norm_key = strip_accents(greek_key)
 
                 if norm_key in lemmata_set and norm_key not in dict_map:
-                    clean = re.sub(r'<[^>]+>', ' ', body)
-                    clean = re.sub(r'\s+', ' ', clean).strip()
-                    short_def = clean[:300] + ("..." if len(clean) > 300 else "")
+                    clean_def, short_gloss = parse_lsj_entry(body)
                     dict_map[norm_key] = {
                         "key": raw_key,
                         "lemma": greek_key,
-                        "def": short_def
+                        "gloss": short_gloss,
+                        "def": clean_def
                     }
 
     out_dir = BUILD_DIR / "stage5" / work_id
@@ -75,3 +123,4 @@ def run_stage5(manifest: Manifest) -> dict:
 
     print(f"  [Stage 5] {work_id}: {len(dict_map):,} LSJ dictionary entries resolved.")
     return dict_map
+

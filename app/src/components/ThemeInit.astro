@@ -6,7 +6,11 @@
   (function () {
     try {
       var saved = localStorage.getItem('ne-theme');
-      document.documentElement.dataset.theme = saved === 'dark' ? 'dark' : 'light';
+      if (saved === 'dark' || saved === 'sepia' || saved === 'light') {
+        document.documentElement.dataset.theme = saved;
+      } else {
+        document.documentElement.dataset.theme = 'light';
+      }
     } catch (e) {}
   })();
 </script>

@@ -17,9 +17,9 @@
   }
 </script>
 
-<select class="work-switcher" value={work} on:change={go} aria-label="Choose a work">
+<select class="work-switcher" value={work} onchange={go} aria-label="Choose a work">
   {#each WORKS as w}
-    <option value={w.id}>{w.englishTitle} ({w.title})</option>
+    <option value={w.id}>{w.abbrev}</option>
   {/each}
 </select>
 

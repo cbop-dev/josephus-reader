@@ -1,39 +1,49 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
-  import { getWork, workPath } from '../lib/works';
+  import { onMount, tick } from "svelte";
+  import { getWork, workPath } from "../lib/works";
 
-  export let work: string = 'Antiquities';
-  export let inputId = 'niese-input';
+  export let work: string = "Antiquities";
+  export let inputId = "niese-input";
 
   let open = false;
-  let value = '';
-  let error = '';
+  let value = "";
+  let error = "";
   let inputEl: HTMLInputElement | undefined;
+
+  onMount(() => {
+    const handleJumpFocus = () => {
+      openBox();
+    };
+    window.addEventListener("open-niese-jump", handleJumpFocus);
+    return () => {
+      window.removeEventListener("open-niese-jump", handleJumpFocus);
+    };
+  });
 
   async function openBox() {
     open = true;
-    error = '';
+    error = "";
     await tick();
     inputEl?.focus();
   }
 
   function closeBox() {
     open = false;
-    error = '';
-    value = '';
+    error = "";
+    value = "";
   }
 
   function go() {
-    error = '';
+    error = "";
     const clean = value.trim();
     if (!clean) {
-      error = 'Enter a section number (e.g. 15 or 1.15)';
+      error = "Enter a section number (e.g. 15 or 1.15)";
       return;
     }
 
     // Parse input e.g. "1.15" (book 1, section 15) or "15" (section 15 in current book)
-    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-    const parts = clean.split('.');
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    const parts = clean.split(".");
     if (parts.length === 2) {
       const b = parseInt(parts[0], 10);
       const s = parseInt(parts[1], 10);
@@ -51,11 +61,11 @@
       return;
     }
 
-    error = 'Invalid section format';
+    error = "Invalid section format";
   }
 
   function onKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
       e.preventDefault();
       closeBox();
     }
@@ -63,19 +73,23 @@
 </script>
 
 {#if !open}
-  <button class="bekker-toggle" on:click={openBox} title="Go to Niese Section">
-    Go to Niese §
+  <button
+    class="bekker-toggle"
+    onclick={openBox}
+    title="Go to Section (Niese numbering)"
+  >
+    Jump to §
   </button>
 {:else}
-  <form class="bekker-jump" on:submit|preventDefault={go} role="search">
+  <form class="bekker-jump" onsubmit={(e) => { e.preventDefault(); go(); }} role="search">
     <label class="bekker-label" for={inputId}>Niese §</label>
     <input
       id={inputId}
       type="text"
       bind:this={inputEl}
       bind:value
-      on:keydown={onKey}
-      on:input={() => (error = '')}
+      onkeydown={onKey}
+      oninput={() => (error = "")}
       placeholder="e.g. 15 or 1.15"
       aria-label="Jump to Niese Section"
       spellcheck="false"
@@ -83,7 +97,12 @@
       autocomplete="off"
     />
     <button type="submit">Go</button>
-    <button type="button" class="bekker-close" on:click={closeBox} aria-label="Close">✕</button>
+    <button
+      type="button"
+      class="bekker-close"
+      onclick={closeBox}
+      aria-label="Close">✕</button
+    >
     {#if error}<span class="bekker-err" role="alert">{error}</span>{/if}
   </form>
 {/if}
