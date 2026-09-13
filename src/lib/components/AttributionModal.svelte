@@ -107,26 +107,26 @@
   }
 
   .modal-content {
-    background-color: var(--bg-card, #ffffff);
-    color: var(--text-color, #222222);
-    border: 1px solid var(--border-color, #e0e0e0);
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     width: 100%;
     max-width: 600px;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-lg);
     overflow: hidden;
   }
 
   .modal-header {
     padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid var(--border-color, #e0e0e0);
+    border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: var(--secondary-bg, #f8f9fa);
+    background-color: var(--bg-secondary);
   }
 
   .modal-title-group {
@@ -137,21 +137,21 @@
 
   .info-icon {
     font-size: 1.3rem;
-    color: var(--accent-color, #4a6fa5);
+    color: var(--accent-color);
   }
 
   .modal-title {
     margin: 0;
     font-size: 1.15rem;
     font-weight: 600;
-    color: var(--text-color, #222222);
+    color: var(--text-primary);
   }
 
   .close-btn {
     background: none;
     border: none;
     font-size: 1.25rem;
-    color: var(--text-muted, #666666);
+    color: var(--text-muted);
     cursor: pointer;
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
@@ -159,8 +159,8 @@
   }
 
   .close-btn:hover {
-    background-color: rgba(0, 0, 0, 0.08);
-    color: var(--text-color, #222222);
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
   }
 
   .modal-body {
@@ -183,18 +183,19 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--accent-color, #4a6fa5);
+    color: var(--accent-color);
   }
 
   .section-text, .section-subtext {
     margin: 0;
     font-size: 0.95rem;
     line-height: 1.5;
+    color: var(--text-primary);
   }
 
   .section-subtext {
     font-size: 0.88rem;
-    opacity: 0.85;
+    color: var(--text-secondary);
     margin-top: 0.2rem;
   }
 
@@ -206,10 +207,11 @@
     gap: 0.4rem;
     font-size: 0.93rem;
     line-height: 1.45;
+    color: var(--text-primary);
   }
 
   a {
-    color: var(--accent-color, #4a6fa5);
+    color: var(--accent-color);
     text-decoration: underline;
     text-underline-offset: 2px;
   }
@@ -224,10 +226,10 @@
 
   .modal-footer {
     padding: 1rem 1.5rem;
-    border-top: 1px solid var(--border-color, #e0e0e0);
+    border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: flex-end;
-    background-color: var(--secondary-bg, #f8f9fa);
+    background-color: var(--bg-secondary);
   }
 
   .btn {
@@ -241,11 +243,11 @@
 
   .secondary-btn {
     background-color: transparent;
-    border: 1px solid var(--border-color, #cccccc);
-    color: var(--text-color, #333333);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
   }
 
   .secondary-btn:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: var(--bg-card);
   }
 </style>

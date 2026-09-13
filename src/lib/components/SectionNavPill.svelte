@@ -188,21 +188,21 @@
     display: flex;
     align-items: center;
     gap: 0.3rem;
-    background-color: var(--bg-card, #ffffff);
-    border: 1px solid var(--border-color, #e0e0e0);
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
     border-radius: 9999px;
     padding: 0.35rem 0.6rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-lg);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    color: var(--text-color, #222222);
+    color: var(--text-primary);
     transition: all 0.2s ease;
   }
 
   .nav-pill-btn {
     background: transparent;
     border: none;
-    color: var(--text-color, #222222);
+    color: var(--text-primary);
     font-size: 0.85rem;
     font-weight: 600;
     padding: 0.35rem 0.55rem;
@@ -211,11 +211,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.15s ease, opacity 0.15s ease;
+    transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
   }
 
   .nav-pill-btn:hover:not(:disabled) {
-    background-color: rgba(0, 0, 0, 0.08);
+    background-color: var(--bg-secondary);
+    color: var(--accent-color);
   }
 
   .nav-pill-btn:disabled {
@@ -226,6 +227,7 @@
   .symbol {
     font-size: 0.8rem;
     line-height: 1;
+    color: inherit;
   }
 
   .select-container {
@@ -235,9 +237,9 @@
   }
 
   .section-select {
-    background-color: var(--bg-secondary, #f0f0f0);
-    color: var(--text-color, #222222);
-    border: 1px solid var(--border-color, #cccccc);
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
     border-radius: 9999px;
     padding: 0.25rem 0.75rem;
     font-size: 0.85rem;
@@ -248,14 +250,19 @@
   }
 
   .section-select:focus {
-    border-color: var(--accent-color, #4a6fa5);
+    border-color: var(--accent-color);
+  }
+
+  .section-select option {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
   }
 
   .lang-jump-group {
     display: none;
     align-items: center;
     padding-left: 0.3rem;
-    border-left: 1px solid var(--border-color, #e0e0e0);
+    border-left: 1px solid var(--border-color);
   }
 
   .lang-jump-group.force-show {
@@ -266,14 +273,15 @@
     font-size: 0.85rem;
     font-weight: 700;
     padding: 0.25rem 0.6rem;
-    background-color: var(--bg-secondary, #f0f0f0);
-    border: 1px solid var(--border-color, #d0d0d0);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
   }
 
   .lang-btn:hover {
-    background-color: var(--accent-color, #4a6fa5);
+    background-color: var(--accent-color);
     color: #ffffff;
-    border-color: var(--accent-color, #4a6fa5);
+    border-color: var(--accent-color);
   }
 
   @media (max-width: 768px) {
