@@ -1,0 +1,275 @@
+---
+import { readFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
+import Reader from '@shared/components/Reader.svelte';
+import NieseJump from '@shared/components/NieseJump.svelte';
+import CommandPalette from '@shared/components/CommandPalette.svelte';
+import WorkSwitcher from './WorkSwitcher.svelte';
+import ThemeInit from './ThemeInit.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import { getWork, bookLabel, workPath, WORKS } from '@shared/lib/works';
+import pkg from '../../package.json';
+
+interface Props { workId: string; n: number; }
+const { workId, n } = Astro.props as Props;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const work = getWork(workId)!;
+const label = bookLabel(work, n);
+
+// Load book data from disk at build time (zero client fetch latency)
+let bookData = null;
+const jsonPath = path.resolve(process.cwd(), `public/data/${workId}/book-${n}.json`);
+if (existsSync(jsonPath)) {
+  bookData = JSON.parse(readFileSync(jsonPath, 'utf-8'));
+}
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{work.englishTitle} — {label} | Josephus Reader</title>
+  <ThemeInit />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&family=EB+Garamond:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet" />
+</head>
+<body class="reader-body">
+  <header class="page-header">
+    <div class="header-left">
+      <button type="button" class="toc-toggle" aria-label="Toggle contents menu" aria-expanded="false">
+        <span class="toc-icon" aria-hidden="true">☰</span>
+        <span class="toc-label">Outline</span>
+      </button>
+      <a class="brand-link" href={base || '/'}>
+        Josephus Reader
+        <a
+          href={pkg.repository || "https://github.com/cbop-dev/josephus-reader"}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="version-badge"
+          title="View Josephus Reader on GitHub"
+        >
+          v{pkg.version}
+        </a>
+      </a>
+      <WorkSwitcher work={workId} client:load />
+    </div>
+
+    <div class="header-right">
+      <NieseJump work={workId} client:load />
+      <button type="button" class="search-trigger" id="search-trigger-btn">
+        <span class="hs-icon">🔍</span>
+        <span class="hs-kbd">⌘K</span>
+      </button>
+      <ThemeToggle />
+      <button type="button" class="settings-toggle" aria-label="Settings" title="Reader Settings">
+        ⚙️
+      </button>
+    </div>
+  </header>
+
+  <!-- Outline Sidebar Drawer -->
+  <div class="toc-backdrop" id="toc-backdrop" hidden></div>
+  <aside class="toc-sidebar" id="toc-sidebar" aria-hidden="true" inert>
+    <div class="toc-header">
+      <h2>{work.englishTitle}</h2>
+      <button type="button" class="toc-close" aria-label="Close outline">✕</button>
+    </div>
+    <nav class="toc-nav">
+      <h3>Books</h3>
+      <ul class="toc-books-list">
+        {Array.from({ length: work.booksCount }, (_, i) => i + 1).map((b) => (
+          <li class={b === n ? 'active' : ''}>
+            <a href={`${base}${workPath(workId, b)}`}>
+              Book {b}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </aside>
+
+  <script>
+    const header = document.querySelector('.page-header');
+    const tocToggle = header?.querySelector('.toc-toggle');
+    const sidebar = document.getElementById('toc-sidebar');
+    const backdrop = document.getElementById('toc-backdrop');
+
+    const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+    if (!isMac) header?.querySelector('.hs-kbd')?.replaceChildren('Ctrl K');
+
+    const setToc = (open: boolean) => {
+      document.body.classList.toggle('toc-open', open);
+      sidebar?.setAttribute('aria-hidden', String(!open));
+      tocToggle?.setAttribute('aria-expanded', String(open));
+      if (backdrop) backdrop.hidden = !open;
+      if (open) {
+        sidebar?.removeAttribute('inert');
+      } else {
+        sidebar?.setAttribute('inert', '');
+      }
+    };
+
+    tocToggle?.addEventListener('click', () => setToc(!document.body.classList.contains('toc-open')));
+    backdrop?.addEventListener('click', () => setToc(false));
+    sidebar?.querySelector('.toc-close')?.addEventListener('click', () => setToc(false));
+
+    const settingsToggle = header?.querySelector('.settings-toggle');
+    settingsToggle?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('toggle-settings'));
+    });
+
+    const searchBtn = document.getElementById('search-trigger-btn');
+    searchBtn?.addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('open-command-palette'));
+    });
+  </script>
+
+  <main class="reader-main">
+    {bookData ? (
+      <Reader work={workId} bookNum={n} bookData={bookData} client:load />
+    ) : (
+      <div class="error-box">Could not load text for {work.englishTitle} Book {n}.</div>
+    )}
+  </main>
+  <CommandPalette work={workId} client:load />
+</body>
+</html>
+
+<style>
+  .reader-body {
+    background-color: var(--page-bg, #eceee7);
+    color: var(--text, #171a1c);
+    margin: 0;
+    font-family: var(--font-ui, system-ui, sans-serif);
+    min-height: 100vh;
+  }
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: var(--col-bg, #f5f6f2);
+    border-bottom: 1px solid var(--border, #d4d8d3);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-left, .header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .brand-link {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--text, #171a1c);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .version-badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
+    background: var(--border, #d4d8d3);
+    color: var(--text-mid, #545b5c);
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .version-badge:hover {
+    background: var(--accent, #1f6f7a);
+    color: #fff;
+  }
+  .toc-toggle, .search-trigger, .settings-toggle {
+    background: none;
+    border: 1px solid var(--border, #d4d8d3);
+    border-radius: 4px;
+    padding: 0.35rem 0.6rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.85rem;
+    color: var(--text-mid, #545b5c);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .toc-toggle:hover, .search-trigger:hover, .settings-toggle:hover {
+    color: var(--accent, #1f6f7a);
+    border-color: var(--accent, #1f6f7a);
+  }
+  .hs-kbd {
+    background: var(--border, #d4d8d3);
+    font-size: 0.72rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+  }
+  .toc-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    background: var(--col-bg, #f5f6f2);
+    border-right: 1px solid var(--border, #d4d8d3);
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    padding: 1rem;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+  }
+  :global(body.toc-open) .toc-sidebar {
+    transform: translateX(0);
+  }
+  .toc-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 999;
+  }
+  .toc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border, #d4d8d3);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .toc-header h2 {
+    font-size: 1.1rem;
+    margin: 0;
+  }
+  .toc-close {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+  .toc-books-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .toc-books-list li {
+    margin-bottom: 0.4rem;
+  }
+  .toc-books-list a {
+    display: block;
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    color: var(--text, #171a1c);
+    text-decoration: none;
+  }
+  .toc-books-list li.active a, .toc-books-list a:hover {
+    background: var(--accent, #1f6f7a);
+    color: #fff;
+  }
+  .error-box {
+    padding: 3rem;
+    text-align: center;
+    color: var(--error, #b22323);
+  }
+</style>

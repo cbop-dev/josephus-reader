@@ -1,0 +1,82 @@
+/* ── Reset & base ─────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+:root {
+  --font-greek:   "Cardo", "Gentium Plus", "Noto Serif", Georgia, serif;
+  --font-english: "EB Garamond", Georgia, "Times New Roman", serif;
+  --font-ui:      system-ui, -apple-system, sans-serif;
+
+  --col-bg:       #f5f6f2;
+  --page-bg:      #eceee7;
+  --text:         #171a1c;
+  --text-mid:     #545b5c;
+  --text-light:   #616d6e;
+  --accent:       #1f6f7a;
+  --accent-light: #4fa3ab;
+  --border:       #d4d8d3;
+  --popup-bg:     #ffffff;
+  --popup-shadow: 0 4px 24px rgba(0,0,0,.18);
+  --greek-hover:        rgba(31, 111, 122, 0.08);
+  --greek-hover-border: rgba(31, 111, 122, 0.16);
+  --greek-active: #cdeef0;
+
+  --on-accent:    #f5f9f8;
+  --input-bg:     #ffffff;
+  --hit-bg:       #ffe29b;
+  --target-bg:    #fff3d6;
+  --mark-bg:      #ffe29b;
+  --error:        #b22323;
+  color-scheme:   light;
+
+  --lh-greek:     1.7;
+  --lh-english:   1.72;
+  --fs-greek:     1.05rem;
+  --fs-english:   1.08rem;
+  --fs-ref:       0.78rem;
+  --fs-linenum:   0.72rem;
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+  --col-bg:       #1a1d1e;
+  --page-bg:      #121415;
+  --text:         #e3e7e8;
+  --text-mid:     #a2abac;
+  --text-light:   #7b8788;
+  --accent:       #3db5c2;
+  --accent-light: #287a84;
+  --border:       #2e3436;
+  --popup-bg:     #1e2224;
+  --popup-shadow: 0 8px 32px rgba(0,0,0,.45);
+  --greek-hover:        rgba(61, 181, 194, 0.15);
+  --greek-hover-border: rgba(61, 181, 194, 0.3);
+  --greek-active: #1f454a;
+
+  --on-accent:    #121415;
+  --input-bg:     #1e2224;
+  --hit-bg:       #4d3d14;
+  --target-bg:    #362e15;
+  --mark-bg:      #4d3d14;
+  --error:        #e55353;
+  color-scheme:   dark;
+}
+
+body {
+  background-color: var(--page-bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  line-height: 1.5;
+}
