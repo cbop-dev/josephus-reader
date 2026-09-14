@@ -1,0 +1,68 @@
+<!DOCTYPE html><html lang="en" data-astro-cid-s56a7hcb> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Attribution & License — Flavius Josephus Reader</title><script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('ne-theme');
+      if (saved === 'dark' || saved === 'sepia' || saved === 'light') {
+        document.documentElement.dataset.theme = saved;
+      } else {
+        document.documentElement.dataset.theme = 'light';
+      }
+    } catch (e) {}
+  })();
+</script><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Cardo:ital,wght@0,400;0,700;1,400&family=EB+Garamond:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/josephus-reader/_astro/global.BCZz7cnl.css"><style>.attr-body[data-astro-cid-s56a7hcb]{background-color:var(--page-bg, #eceee7);color:var(--text, #171a1c);font-family:var(--font-ui, system-ui, sans-serif);margin:0;padding:0;min-height:100vh}.attr-container[data-astro-cid-s56a7hcb]{max-width:720px;margin:0 auto;padding:3rem 1.5rem}.header-nav[data-astro-cid-s56a7hcb]{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}.back-link[data-astro-cid-s56a7hcb]{color:var(--accent, #1f6f7a);text-decoration:none;font-weight:600;font-size:.9rem}.back-link[data-astro-cid-s56a7hcb]:hover{text-decoration:underline}.attr-title[data-astro-cid-s56a7hcb]{font-family:var(--font-english, "EB Garamond", serif);font-size:2.25rem;color:var(--accent, #1f6f7a);margin:0 0 1.5rem}.attr-card[data-astro-cid-s56a7hcb]{background-color:var(--col-bg, #f5f6f2);border:1px solid var(--border, #d4d8d3);border-radius:8px;padding:2rem;display:flex;flex-direction:column;gap:1.5rem}h3[data-astro-cid-s56a7hcb]{margin:0 0 .4rem;font-size:1.05rem;color:var(--accent, #1f6f7a)}p[data-astro-cid-s56a7hcb],ul[data-astro-cid-s56a7hcb]{margin:0;line-height:1.6;font-size:.95rem}ul[data-astro-cid-s56a7hcb]{padding-left:1.25rem}li[data-astro-cid-s56a7hcb]{margin-bottom:.35rem}a[data-astro-cid-s56a7hcb]{color:var(--accent, #1f6f7a);text-decoration:underline}
+</style></head> <body class="attr-body" data-astro-cid-s56a7hcb> <div class="attr-container" data-astro-cid-s56a7hcb> <header class="attr-header" data-astro-cid-s56a7hcb> <div class="header-nav" data-astro-cid-s56a7hcb> <a href="/josephus-reader" class="back-link" data-astro-cid-s56a7hcb>← Return to Josephus Reader</a> <div class="theme-dropdown-wrapper" data-astro-cid-x3pjskd3> <select class="theme-select" aria-label="Select theme" title="Change theme" data-astro-cid-x3pjskd3> <option value="light" title="Light theme" data-astro-cid-x3pjskd3>☀️</option> <option value="dark" title="Dark theme" data-astro-cid-x3pjskd3>🌙</option> <option value="sepia" title="Sepia theme" data-astro-cid-x3pjskd3>📜</option> </select> </div> <script>
+  (function () {
+    function initThemes() {
+      var selects = document.querySelectorAll('.theme-select');
+      if (!selects.length) return;
+
+      function render() {
+        var current = document.documentElement.dataset.theme || 'light';
+        selects.forEach(function (s) {
+          s.value = current;
+        });
+      }
+
+      function applyTheme(targetTheme) {
+        function apply() {
+          document.documentElement.dataset.theme = targetTheme;
+          try {
+            localStorage.setItem('ne-theme', targetTheme);
+          } catch (err) {}
+          render();
+        }
+        var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (document.startViewTransition && !reduce) {
+          document.startViewTransition(apply);
+        } else {
+          apply();
+        }
+      }
+
+      render();
+
+      selects.forEach(function (select) {
+        select.addEventListener('change', function (e) {
+          applyTheme(e.target.value);
+        });
+      });
+
+      function cycleTheme() {
+        var order = ['light', 'dark', 'sepia'];
+        var current = document.documentElement.dataset.theme || 'light';
+        var idx = order.indexOf(current);
+        var nextTheme = order[(idx + 1) % order.length];
+        applyTheme(nextTheme);
+      }
+
+      window.removeEventListener('cycle-theme', cycleTheme);
+      window.addEventListener('cycle-theme', cycleTheme);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initThemes);
+    } else {
+      initThemes();
+    }
+  })();
+</script> </div> <h1 class="attr-title" data-astro-cid-s56a7hcb>Source Data &amp; Attribution Info</h1> </header> <div class="attr-card" data-astro-cid-s56a7hcb> <section class="info-section" data-astro-cid-s56a7hcb> <h3 data-astro-cid-s56a7hcb>Perseus Digital Library</h3> <p data-astro-cid-s56a7hcb>The Greek text and English translation in this application are derived from XML datasets provided by the <a href="https://github.com/PerseusDL" target="_blank" rel="noopener noreferrer" data-astro-cid-s56a7hcb>Perseus Digital Library project</a>.</p> </section> <section class="info-section" data-astro-cid-s56a7hcb> <h3 data-astro-cid-s56a7hcb>Editions &amp; Translations</h3> <ul data-astro-cid-s56a7hcb> <li data-astro-cid-s56a7hcb><strong data-astro-cid-s56a7hcb>Greek Text:</strong> <em data-astro-cid-s56a7hcb>Flavii Iosephi Opera</em>, Vol. 1–4. Edited by Benedikt Niese. Berlin: Weidmann, 1885–1890. (Public Domain / CC BY-SA 4.0 US)</li> <li data-astro-cid-s56a7hcb><strong data-astro-cid-s56a7hcb>English Translation:</strong> <em data-astro-cid-s56a7hcb>The Works of Flavius Josephus</em>. Translated by William Whiston. Auburn and Rochester, NY: Alden and Beardsley, 1856. (Public Domain / CC BY-SA 4.0 US)</li> </ul> </section> <section class="info-section" data-astro-cid-s56a7hcb> <h3 data-astro-cid-s56a7hcb>Lexicon &amp; Morphological Data</h3> <p data-astro-cid-s56a7hcb>Morphological lookup and dictionary definitions are derived from the <strong data-astro-cid-s56a7hcb>Liddell-Scott-Jones (LSJ) Greek-English Lexicon</strong> via <a href="https://github.com/PerseusDL" target="_blank" rel="noopener noreferrer" data-astro-cid-s56a7hcb>Perseus</a> and the <a href="https://alpheios.net" target="_blank" rel="noopener noreferrer" data-astro-cid-s56a7hcb>Alpheios Project</a> under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer" data-astro-cid-s56a7hcb>CC BY-SA 4.0</a>.</p> </section> <section class="info-section" data-astro-cid-s56a7hcb> <h3 data-astro-cid-s56a7hcb>License &amp; Open Access</h3> <p data-astro-cid-s56a7hcb>This site operates under a dual open-access license model:</p> <ul data-astro-cid-s56a7hcb> <li data-astro-cid-s56a7hcb><strong data-astro-cid-s56a7hcb>Site Content &amp; Data:</strong> Distributed under the <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer" data-astro-cid-s56a7hcb>Creative Commons Attribution-ShareAlike 4.0 International License (CC BY-SA 4.0)</a>.</li> <li data-astro-cid-s56a7hcb><strong data-astro-cid-s56a7hcb>Application Software:</strong> Open source codebase and Svelte/Astro web components are licensed under the <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer" data-astro-cid-s56a7hcb>MIT License</a>.</li> </ul> </section> <section class="info-section" data-astro-cid-s56a7hcb> <h3 data-astro-cid-s56a7hcb>Plato Reader Platform</h3> <p data-astro-cid-s56a7hcb>This web application is built using the open source platform architecture of John Boyer's <a href="https://github.com/johnhboyer-sys/plato-reader" target="_blank" rel="noopener noreferrer" data-astro-cid-s56a7hcb>Plato Reader / Josephus Project</a>.</p> </section> </div> </div></body></html>
