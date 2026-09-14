@@ -31,18 +31,3 @@ vite.config.ts.timestamp-*
 
 pipeline/josephus_pipeline/__pycache__/
 
-sources/perseus-eng/tlg0526.tlg001.perseus-eng2.xml
-
-sources/perseus-eng/tlg0526.tlg002.perseus-eng2.xml
-
-sources/perseus-eng/tlg0526.tlg003.perseus-eng2.xml
-
-sources/perseus-eng/tlg0526.tlg004.perseus-eng2.xml
-
-sources/perseus-grc/tlg0526.tlg001.perseus-grc2.xml
-
-sources/perseus-grc/tlg0526.tlg002.perseus-grc2.xml
-
-sources/perseus-grc/tlg0526.tlg003.perseus-grc2.xml
-
-sources/perseus-grc/tlg0526.tlg004.perseus-grc2.xml

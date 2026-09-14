@@ -4,11 +4,24 @@ from __future__ import annotations
 
 import json
 import re
+import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from .config import Manifest, BUILD_DIR
 
 NS = {"tei": "http://www.tei-c.org/ns/1.0"}
+
+
+def ensure_source(path: Path, tlg_work: str, lang: str):
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        url = f"https://raw.githubusercontent.com/PerseusDL/canonical-greekLit/master/data/tlg0526/tlg{tlg_work}/tlg0526.tlg{tlg_work}.perseus-{lang}2.xml"
+        print(f"Downloading missing source XML for tlg0526.tlg{tlg_work} ({lang})...")
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req) as resp:
+            data = resp.read()
+        with open(path, "wb") as f:
+            f.write(data)
 
 
 def clean_text(text: str) -> str:
@@ -34,11 +47,12 @@ def get_node_text(elem: ET.Element) -> str:
 
 def run_stage1(manifest: Manifest) -> dict:
     work_id = manifest.work_id
+    tlg_work = manifest.data["work"]["tlg_work"]
     grc_path = manifest.greek_source()
     eng_path = manifest.english_source()
 
-    if not grc_path.exists() or not eng_path.exists():
-        raise FileNotFoundError(f"Source XML files missing for {work_id}: {grc_path}, {eng_path}")
+    ensure_source(grc_path, tlg_work, "grc")
+    ensure_source(eng_path, tlg_work, "eng")
 
     print(f"[Stage 1] Ingesting {work_id} from {grc_path.name} & {eng_path.name}...")
 
