@@ -21,7 +21,8 @@ def run_stage3(manifest: Manifest) -> dict:
     work_id = manifest.work_id
     stage1_file = BUILD_DIR / "stage1" / work_id / f"{work_id}.json"
     if not stage1_file.exists():
-        raise FileNotFoundError(f"Stage 1 output missing for {work_id}")
+        from .stage1_niese import run_stage1
+        run_stage1(manifest)
 
     with open(stage1_file, "r", encoding="utf-8") as f:
         work_data = json.load(f)

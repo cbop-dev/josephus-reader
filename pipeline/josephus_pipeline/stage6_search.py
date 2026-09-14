@@ -21,7 +21,8 @@ def run_stage6(manifest: Manifest) -> dict:
     stage4_file = BUILD_DIR / "stage4" / work_id / "morph_map.json"
 
     if not stage1_file.exists():
-        raise FileNotFoundError(f"Stage 1 output missing for {work_id}")
+        from .stage1_niese import run_stage1
+        run_stage1(manifest)
 
     with open(stage1_file, "r", encoding="utf-8") as f:
         work_data = json.load(f)

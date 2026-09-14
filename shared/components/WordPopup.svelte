@@ -122,7 +122,7 @@
             {#if dictEntry?.gloss}
               <div class="gloss-line">
                 <span class="label">Gloss:</span>
-                <span class="gloss-value">{dictEntry.gloss}</span>
+                <span class="gloss-value">{dictEntry.gloss.replace(/,\s*,+/g, ', ').replace(/^[\s,;:]+|[\s,;:]+$/g, '')}</span>
               </div>
             {/if}
           </div>

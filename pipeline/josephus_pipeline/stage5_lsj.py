@@ -18,7 +18,94 @@ def strip_accents(text: str) -> str:
     return unicodedata.normalize("NFC", text).lower().replace("ς", "σ")
 
 
-def parse_lsj_entry(key: str, body_str: str) -> tuple[str, str, str]:
+def clean_gloss_text(raw_gloss: str) -> str:
+    """Clean a raw gloss string to eliminate double commas, stray quotes, and whitespace."""
+    if not raw_gloss:
+        return ""
+    cleaned = re.sub(r',\s*,+', ', ', raw_gloss)
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    return cleaned.strip(" ,;:\"'")
+
+
+def extract_tight_gloss(body_str: str, entries_db: dict[str, str] | None = None) -> str:
+    """Extract a tight, 1-2 term translation gloss from an LSJ entry TEI XML snippet."""
+    # 1. Clean XML body for translation gloss extraction
+    # Strip citations (<cit>), quotes (<quote>), bibl (<bibl>)
+    clean_body = re.sub(r"<(cit|quote|bibl)[^>]*>.*?</\1>", "", body_str, flags=re.DOTALL)
+    
+    # Strip <foreign>...</foreign> elements (Greek example phrases & idioms) along with immediately following <tr> phrase translations
+    clean_body = re.sub(r"<foreign[^>]*>.*?</foreign>\s*(?:<tr[^>]*>.*?</tr>)?", "", clean_body, flags=re.DOTALL)
+    
+    # Strip proverb blocks
+    clean_body = re.sub(r"\bprov\.[^;<.]*?(?:;|\.|$)", "", clean_body, flags=re.IGNORECASE)
+    
+    # Strip opposition phrases: e.g. "opp. <tr>...</tr>"
+    clean_body = re.sub(
+        r",?\s*(?:opp\.|opposite|contrary\s+to|v\.|cf\.)\s*<tr[^>]*>.*?</tr>(?:(?:\s+or\s+|\s+,\s*)<tr[^>]*>.*?</tr>)*",
+        "",
+        clean_body,
+        flags=re.IGNORECASE
+    )
+
+    xml_str = '<entryFree>' + clean_body + '</entryFree>'
+    xml_str = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;)', '&amp;', xml_str)
+
+    try:
+        root = ET.fromstring(xml_str)
+    except Exception:
+        return ""
+
+    terms = []
+    seen = set()
+
+    for tr in root.findall('.//tr'):
+        raw_text = (tr.text or "").strip()
+        if not raw_text:
+            continue
+        
+        # Split on internal commas or semicolons
+        parts = re.split(r'[,;]+', raw_text)
+        for part in parts:
+            p = part.strip(" '\"`:,.-")
+            if not p:
+                continue
+            
+            p_lower = p.lower()
+            
+            # Exclusion rules:
+            # 1. Skip meta terms, latin phrases, proverb terms, or opposition words
+            if re.search(r'\b(opp|opposite|contrary|prov|cf|v|etc|e\.g|i\.e|in vino|veritas|idem|ibid)\b', p_lower):
+                continue
+            # 2. Skip single quoted latin phrases or quotes
+            if p.startswith("'") or p.endswith("'") or "in vino" in p_lower or "veritas" in p_lower:
+                continue
+            # 3. Skip long explanations (> 30 chars or > 4 words)
+            if len(p) > 30 or len(p.split()) > 4:
+                continue
+            # 4. Skip Greek/BetaCode characters
+            if re.search(r'[\u0370-\u03ff\u1f00-\u1fff]', p):
+                continue
+            
+            if p_lower not in seen:
+                seen.add(p_lower)
+                terms.append(p)
+
+    if not terms:
+        # Cross reference resolution if entry refers to another word (e.g., e)peidh/ -> v. e)pei/)
+        if entries_db and body_str:
+            m_ref = re.search(r'<ref[^>]*lang="greek"[^>]*>(.*?)</ref>', body_str)
+            if m_ref:
+                ref_key = m_ref.group(1).strip(" .;")
+                ref_key_raw = re.sub(r'\d+$', '', ref_key).strip()
+                if ref_key_raw in entries_db:
+                    return extract_tight_gloss(entries_db[ref_key_raw], entries_db=None)
+        return ""
+
+    selected = terms[:2]
+    return clean_gloss_text(', '.join(selected))
+
+
+def parse_lsj_entry(key: str, body_str: str, entries_db: dict[str, str] | None = None) -> tuple[str, str, str]:
     """Parse LSJ entry TEI XML snippet, converting BetaCode Greek to Unicode, extracting POS and short glosses."""
     raw_key = re.sub(r"\d+$", "", key).strip()
     pos = ""
@@ -59,22 +146,17 @@ def parse_lsj_entry(key: str, body_str: str) -> tuple[str, str, str]:
             elif re.search(r"\b(Adj\.|adjective)\b", head_text, re.I) or re.search(r"<\s*itype[^>]*>\s*(h/|o/n|a|on)\s*</itype>", body_str):
                 pos = "adjective"
 
-    xml_str = '<entryFree>' + body_str + '</entryFree>'
-    xml_str = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;)', '&amp;', xml_str)
+    short_gloss = extract_tight_gloss(body_str, entries_db=entries_db)
 
+    # Re-parse full entry XML for complete definition & BetaCode conversion
+    full_xml_str = '<entryFree>' + body_str + '</entryFree>'
+    full_xml_str = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;)', '&amp;', full_xml_str)
     try:
-        root = ET.fromstring(xml_str)
+        full_root = ET.fromstring(full_xml_str)
     except Exception:
-        # Fallback if XML parsing fails
         clean = re.sub(r'<[^>]+>', ' ', body_str)
         clean = re.sub(r'\s+', ' ', clean).strip()
-        return clean[:3000], "", pos
-
-    # Extract short translation glosses from <tr...> tags
-    trs = [tr.text.strip() for tr in root.findall('.//tr') if tr.text and tr.text.strip()]
-    seen = set()
-    unique_glosses = [x for x in trs if not (x in seen or seen.add(x))]
-    short_gloss = ', '.join(unique_glosses[:4])
+        return clean[:3000], short_gloss, pos
 
     # Convert Greek BetaCode elements to Polytonic Unicode Greek
     def convert_greek_nodes(elem, in_greek=False):
@@ -94,7 +176,7 @@ def parse_lsj_entry(key: str, body_str: str) -> tuple[str, str, str]:
                 except Exception:
                     pass
 
-    convert_greek_nodes(root)
+    convert_greek_nodes(full_root)
 
     # Flatten XML text
     def get_clean_text(elem):
@@ -105,7 +187,7 @@ def parse_lsj_entry(key: str, body_str: str) -> tuple[str, str, str]:
                 text += child.tail
         return text
 
-    clean_def = get_clean_text(root)
+    clean_def = get_clean_text(full_root)
     clean_def = re.sub(r'\s+', ' ', clean_def).strip()
     if len(clean_def) > 3500:
         clean_def = clean_def[:3500] + "..."
@@ -117,7 +199,8 @@ def run_stage5(manifest: Manifest) -> dict:
     work_id = manifest.work_id
     stage4_file = BUILD_DIR / "stage4" / work_id / "morph_map.json"
     if not stage4_file.exists():
-        raise FileNotFoundError(f"Stage 4 output missing for {work_id}")
+        from .stage4_morphology import run_stage4
+        run_stage4(manifest)
 
     with open(stage4_file, "r", encoding="utf-8") as f:
         morph_map = json.load(f)
@@ -131,28 +214,34 @@ def run_stage5(manifest: Manifest) -> dict:
     lsj_files = sorted(glob.glob(str(REPO_ROOT / "raw_xml" / "lsj" / "grc.lsj.perseus-eng*.xml")))
 
     if lsj_files:
+        entries_db = {}
+        parsed_entries = []
         for xml_path in lsj_files:
             with open(xml_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
-
             entries = re.findall(r'<entryFree[^>]*key=\"([^\"]+)\"[^>]*>(.*?)</entryFree>', content, re.DOTALL)
             for key, body in entries:
                 raw_key = re.sub(r'\d+$', '', key).strip()
-                try:
-                    greek_key = betacode.beta_to_uni(raw_key)
-                except Exception:
-                    greek_key = raw_key
-                norm_key = strip_accents(greek_key)
+                if raw_key not in entries_db:
+                    entries_db[raw_key] = body
+                parsed_entries.append((key, raw_key, body))
 
-                if norm_key in lemmata_set and norm_key not in dict_map:
-                    clean_def, short_gloss, pos = parse_lsj_entry(key, body)
-                    dict_map[norm_key] = {
-                        "key": raw_key,
-                        "lemma": greek_key,
-                        "pos": pos,
-                        "gloss": short_gloss,
-                        "def": clean_def
-                    }
+        for key, raw_key, body in parsed_entries:
+            try:
+                greek_key = betacode.beta_to_uni(raw_key)
+            except Exception:
+                greek_key = raw_key
+            norm_key = strip_accents(greek_key)
+
+            if norm_key in lemmata_set and norm_key not in dict_map:
+                clean_def, short_gloss, pos = parse_lsj_entry(key, body, entries_db=entries_db)
+                dict_map[norm_key] = {
+                    "key": raw_key,
+                    "lemma": greek_key,
+                    "pos": pos,
+                    "gloss": short_gloss,
+                    "def": clean_def
+                }
 
     out_dir = BUILD_DIR / "stage5" / work_id
     out_dir.mkdir(parents=True, exist_ok=True)

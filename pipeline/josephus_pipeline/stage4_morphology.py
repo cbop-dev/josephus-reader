@@ -251,7 +251,8 @@ def run_stage4(manifest: Manifest) -> dict:
     work_id = manifest.work_id
     stage3_file = BUILD_DIR / "stage3" / work_id / "tokens.json"
     if not stage3_file.exists():
-        raise FileNotFoundError(f"Stage 3 output missing for {work_id}")
+        from .stage3_tokenize import run_stage3
+        run_stage3(manifest)
 
     with open(stage3_file, "r", encoding="utf-8") as f:
         token_data = json.load(f)
