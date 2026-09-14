@@ -4,16 +4,26 @@
 
   let {
     sections = [],
-    viewMode = 'parallel'
+    viewMode = 'parallel',
+    isZenMode = false
   }: {
     sections?: Section[];
     viewMode?: 'parallel' | 'greek' | 'english' | 'stacked';
+    isZenMode?: boolean;
   } = $props();
 
   let currentSecIdx = $state(0);
   let activeSectionLabel = $state('1');
   let dropdownOpen = $state(false);
-  let isCollapsed = $state(false);
+  let isCollapsed = $state(true);
+
+  $effect(() => {
+    if (isZenMode) {
+      isCollapsed = true;
+    } else {
+      isCollapsed = false;
+    }
+  });
 
   let observer: IntersectionObserver | null = null;
   let pillContainerEl: HTMLElement | null = null;
@@ -23,7 +33,9 @@
 
     if (typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem('josephus-navpill-collapsed');
-      if (saved === 'true') {
+      if (saved === 'false') {
+        isCollapsed = false;
+      } else {
         isCollapsed = true;
       }
     }
