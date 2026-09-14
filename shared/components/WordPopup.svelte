@@ -87,7 +87,20 @@
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div class="word-popup-card" class:maximized={isMaximized} onclick={(e) => e.stopPropagation()} role="dialog" aria-label="Word Morph & Definition">
     <div class="word-popup-header">
-      <span class="popup-word">{word}</span>
+      <div class="header-title-row">
+        <span class="popup-word">{word}</span>
+        {#if !loading && info}
+          <div class="header-morph-info">
+            {#if info.pos || dictEntry?.pos}
+              <span class="pos-badge">{info.pos || dictEntry?.pos}</span>
+            {/if}
+            {#if info.parse && info.parse !== 'Form'}
+              <span class="parse-tag">{info.parse}</span>
+              <span class="parse-desc">{info.desc}</span>
+            {/if}
+          </div>
+        {/if}
+      </div>
       <div class="header-actions">
         <button class="action-btn max-btn" onclick={toggleMaximize} aria-label={isMaximized ? "Restore size" : "Maximize"}>
           {isMaximized ? '🗗' : '⤢'}
@@ -105,10 +118,6 @@
             <div class="lemma-line">
               <span class="label">Lemma:</span>
               <span class="lemma-value">{info.lemma}</span>
-            </div>
-            <div class="parse-line">
-              <span class="parse-tag">{info.parse}</span>
-              <span class="parse-desc">{info.desc}</span>
             </div>
             {#if dictEntry?.gloss}
               <div class="gloss-line">
@@ -208,6 +217,23 @@
     border-bottom: 1px solid var(--border, #d4d8d3);
     padding-bottom: 0.6rem;
     margin-bottom: 1rem;
+    gap: 0.75rem;
+  }
+
+  .header-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .header-morph-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
   }
 
   .popup-word {
@@ -258,6 +284,37 @@
     display: flex;
     gap: 0.5rem;
     align-items: baseline;
+    flex-wrap: wrap;
+  }
+
+  .label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-mid, #545b5c);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    min-width: 3.5rem;
+  }
+
+  .lemma-value {
+    font-family: var(--font-greek, serif);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--accent, #1f6f7a);
+  }
+
+  .pos-badge {
+    display: inline-block;
+    background-color: var(--page-bg, #eceee7);
+    color: var(--accent, #1f6f7a);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border, #d4d8d3);
+    margin-left: 0.4rem;
   }
 
   .label {

@@ -4,8 +4,8 @@ import sitemap from '@astrojs/sitemap';
 import path from 'path';
 
 export default defineConfig({
-  site: 'https://cbop-dev.github.io',
-  base: '/josephus-reader',
+  site: process.env.SITE_URL || 'https://cbop-dev.github.io',
+  base: process.env.BASE_PATH !== undefined ? process.env.BASE_PATH : '/josephus-reader',
   integrations: [
     svelte(),
     sitemap()

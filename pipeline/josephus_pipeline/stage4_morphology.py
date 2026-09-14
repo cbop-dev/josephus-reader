@@ -39,29 +39,212 @@ def load_cltk_lemmatizer() -> dict:
     return {}
 
 
-def derive_parse_tag(word: str) -> tuple[str, str]:
+# Closed-class paradigm dictionary: word_norm -> (pos, parse_tag, parse_desc)
+KNOWN_PARADIGMS: dict[str, tuple[str, str, str]] = {
+    # Article: ὁ, ἡ, τό
+    "ο": ("article", "Nom Sg M", "Nominative singular masculine"),
+    "η": ("article", "Nom Sg F", "Nominative singular feminine"),
+    "το": ("article", "Nom/Acc Sg N", "Nominative/accusative singular neuter"),
+    "του": ("article", "Gen Sg M/N", "Genitive singular masculine/neuter"),
+    "τησ": ("article", "Gen Sg F", "Genitive singular feminine"),
+    "τω": ("article", "Dat Sg M/N", "Dative singular masculine/neuter"),
+    "τη": ("article", "Dat Sg F", "Dative singular feminine"),
+    "τον": ("article", "Acc Sg M", "Accusative singular masculine"),
+    "την": ("article", "Acc Sg F", "Accusative singular feminine"),
+    "οι": ("article", "Nom Pl M", "Nominative plural masculine"),
+    "αι": ("article", "Nom Pl F", "Nominative plural feminine"),
+    "τα": ("article", "Nom/Acc Pl N", "Nominative/accusative plural neuter"),
+    "των": ("article", "Gen Pl M/F/N", "Genitive plural masculine/feminine/neuter"),
+    "τοισ": ("article", "Dat Pl M/N", "Dative plural masculine/neuter"),
+    "ταισ": ("article", "Dat Pl F", "Dative plural feminine"),
+    "τουσ": ("article", "Acc Pl M", "Accusative plural masculine"),
+    "τασ": ("article", "Acc Pl F", "Accusative plural feminine"),
+
+    # Demonstrative: οὗτος, αὕτη, τοῦτο
+    "ουτοσ": ("pronoun", "Nom Sg M", "Nominative singular masculine"),
+    "αυτη": ("pronoun", "Nom Sg F", "Nominative singular feminine"),
+    "τουτο": ("pronoun", "Nom/Acc Sg N", "Nominative/accusative singular neuter"),
+    "τουτου": ("pronoun", "Gen Sg M/N", "Genitive singular masculine/neuter"),
+    "ταυτησ": ("pronoun", "Gen Sg F", "Genitive singular feminine"),
+    "τουτω": ("pronoun", "Dat Sg M/N", "Dative singular masculine/neuter"),
+    "ταυτη": ("pronoun", "Dat Sg F", "Dative singular feminine"),
+    "τουτον": ("pronoun", "Acc Sg M", "Accusative singular masculine"),
+    "ταυτην": ("pronoun", "Acc Sg F", "Accusative singular feminine"),
+    "ουτοι": ("pronoun", "Nom Pl M", "Nominative plural masculine"),
+    "αυται": ("pronoun", "Nom Pl F", "Nominative plural feminine"),
+    "ταυτα": ("pronoun", "Nom/Acc Pl N", "Nominative/accusative plural neuter"),
+    "τουτων": ("pronoun", "Gen Pl M/F/N", "Genitive plural masculine/feminine/neuter"),
+    "τουτοισ": ("pronoun", "Dat Pl M/N", "Dative plural masculine/neuter"),
+    "ταυταισ": ("pronoun", "Dat Pl F", "Dative plural feminine"),
+    "τουτουσ": ("pronoun", "Acc Pl M", "Accusative plural masculine"),
+    "ταυσ": ("pronoun", "Acc Pl F", "Accusative plural feminine"),
+
+    # Relative & Personal Pronouns
+    "οσ": ("pronoun", "Nom Sg M", "Nominative singular masculine"),
+    "η": ("pronoun", "Nom Sg F", "Nominative singular feminine"),
+    "ο": ("pronoun", "Nom/Acc Sg N", "Nominative/accusative singular neuter"),
+    "ου": ("pronoun", "Gen Sg M/N", "Genitive singular masculine/neuter"),
+    "ησ": ("pronoun", "Gen Sg F", "Genitive singular feminine"),
+    "ω": ("pronoun", "Dat Sg M/N", "Dative singular masculine/neuter"),
+    "ον": ("pronoun", "Acc Sg M", "Accusative singular masculine"),
+    "ην": ("pronoun", "Acc Sg F", "Accusative singular feminine"),
+    "οι": ("pronoun", "Nom Pl M", "Nominative plural masculine"),
+    "αι": ("pronoun", "Nom Pl F", "Nominative plural feminine"),
+    "α": ("pronoun", "Nom/Acc Pl N", "Nominative/accusative plural neuter"),
+    "οισ": ("pronoun", "Dat Pl M/N", "Dative plural masculine/neuter"),
+    "αισ": ("pronoun", "Dat Pl F", "Dative plural feminine"),
+    "ουσ": ("pronoun", "Acc Pl M", "Accusative plural masculine"),
+    "ασ": ("pronoun", "Acc Pl F", "Accusative plural feminine"),
+
+    "εγω": ("pronoun", "Nom Sg", "Nominative 1st singular"),
+    "εμου": ("pronoun", "Gen Sg", "Genitive 1st singular"),
+    "εμοι": ("pronoun", "Dat Sg", "Dative 1st singular"),
+    "εμε": ("pronoun", "Acc Sg", "Accusative 1st singular"),
+    "μου": ("pronoun", "Gen Sg", "Genitive 1st singular"),
+    "μοι": ("pronoun", "Dat Sg", "Dative 1st singular"),
+    "με": ("pronoun", "Acc Sg", "Accusative 1st singular"),
+    "ημεισ": ("pronoun", "Nom Pl", "Nominative 1st plural"),
+    "ημων": ("pronoun", "Gen Pl", "Genitive 1st plural"),
+    "ημιν": ("pronoun", "Dat Pl", "Dative 1st plural"),
+    "ημασ": ("pronoun", "Acc Pl", "Accusative 1st plural"),
+
+    "συ": ("pronoun", "Nom Sg", "Nominative 2nd singular"),
+    "σου": ("pronoun", "Gen Sg", "Genitive 2nd singular"),
+    "σοι": ("pronoun", "Dat Sg", "Dative 2nd singular"),
+    "σε": ("pronoun", "Acc Sg", "Accusative 2nd singular"),
+    "υμεισ": ("pronoun", "Nom Pl", "Nominative 2nd plural"),
+    "υμων": ("pronoun", "Gen Pl", "Genitive 2nd plural"),
+    "υμιν": ("pronoun", "Dat Pl", "Dative 2nd plural"),
+    "υμασ": ("pronoun", "Acc Pl", "Accusative 2nd plural"),
+
+    "αυτοσ": ("pronoun", "Nom Sg M", "Nominative singular masculine"),
+    "αυτη": ("pronoun", "Nom Sg F", "Nominative singular feminine"),
+    "αυτο": ("pronoun", "Nom/Acc Sg N", "Nominative/accusative singular neuter"),
+    "αυτου": ("pronoun", "Gen Sg M/N", "Genitive singular masculine/neuter"),
+    "αυτησ": ("pronoun", "Gen Sg F", "Genitive singular feminine"),
+    "αυτω": ("pronoun", "Dat Sg M/N", "Dative singular masculine/neuter"),
+    "αυτη": ("pronoun", "Dat Sg F", "Dative singular feminine"),
+    "αυτον": ("pronoun", "Acc Sg M", "Accusative singular masculine"),
+    "αυτην": ("pronoun", "Acc Sg F", "Accusative singular feminine"),
+    "αυτοι": ("pronoun", "Nom Pl M", "Nominative plural masculine"),
+    "αυται": ("pronoun", "Nom Pl F", "Nominative plural feminine"),
+    "αυτα": ("pronoun", "Nom/Acc Pl N", "Nominative/accusative plural neuter"),
+    "αυτων": ("pronoun", "Gen Pl M/F/N", "Genitive plural masculine/feminine/neuter"),
+    "αυτοισ": ("pronoun", "Dat Pl M/N", "Dative plural masculine/neuter"),
+    "αυταισ": ("pronoun", "Dat Pl F", "Dative plural feminine"),
+    "αυτουσ": ("pronoun", "Acc Pl M", "Accusative plural masculine"),
+    "αυτασ": ("pronoun", "Acc Pl F", "Accusative plural feminine"),
+
+    "τισ": ("pronoun", "Nom Sg M/F", "Nominative singular masculine/feminine"),
+    "τι": ("pronoun", "Nom/Acc Sg N", "Nominative/accusative singular neuter"),
+    "τινοσ": ("pronoun", "Gen Sg", "Genitive singular"),
+    "τινι": ("pronoun", "Dat Sg", "Dative singular"),
+    "τινα": ("pronoun", "Acc Sg M/F / Nom/Acc Pl N", "Accusative singular / Neuter plural"),
+    "τινεσ": ("pronoun", "Nom Pl M/F", "Nominative plural masculine/feminine"),
+    "τινων": ("pronoun", "Gen Pl", "Genitive plural"),
+    "τισι": ("pronoun", "Dat Pl", "Dative plural"),
+    "τισιν": ("pronoun", "Dat Pl", "Dative plural"),
+    "τινασ": ("pronoun", "Acc Pl M/F", "Accusative plural masculine/feminine"),
+
+    # Prepositions
+    "εν": ("preposition", "Prep", "Preposition (+ Dat)"),
+    "εισ": ("preposition", "Prep", "Preposition (+ Acc)"),
+    "εσ": ("preposition", "Prep", "Preposition (+ Acc)"),
+    "εκ": ("preposition", "Prep", "Preposition (+ Gen)"),
+    "εξ": ("preposition", "Prep", "Preposition (+ Gen)"),
+    "προσ": ("preposition", "Prep", "Preposition (+ Gen/Dat/Acc)"),
+    "μετα": ("preposition", "Prep", "Preposition (+ Gen/Acc)"),
+    "κατα": ("preposition", "Prep", "Preposition (+ Gen/Acc)"),
+    "δια": ("preposition", "Prep", "Preposition (+ Gen/Acc)"),
+    "επι": ("preposition", "Prep", "Preposition (+ Gen/Dat/Acc)"),
+    "υπο": ("preposition", "Prep", "Preposition (+ Gen/Dat/Acc)"),
+    "απο": ("preposition", "Prep", "Preposition (+ Gen)"),
+    "παρα": ("preposition", "Prep", "Preposition (+ Gen/Dat/Acc)"),
+    "περι": ("preposition", "Prep", "Preposition (+ Gen/Dat/Acc)"),
+    "συν": ("preposition", "Prep", "Preposition (+ Dat)"),
+    "ξυν": ("preposition", "Prep", "Preposition (+ Dat)"),
+    "υπερ": ("preposition", "Prep", "Preposition (+ Gen/Acc)"),
+    "αμφι": ("preposition", "Prep", "Preposition (+ Gen/Dat/Acc)"),
+    "αντι": ("preposition", "Prep", "Preposition (+ Gen)"),
+    "ανα": ("preposition", "Prep", "Preposition (+ Acc)"),
+    "ανευ": ("preposition", "Prep", "Preposition (+ Gen)"),
+    "ενεκα": ("preposition", "Prep", "Preposition (+ Gen)"),
+    "χωρισ": ("preposition", "Prep", "Preposition (+ Gen)"),
+
+    # Conjunctions & Particles
+    "και": ("conjunction", "Conj", "Conjunction / Adverb"),
+    "δε": ("conjunction", "Conj", "Conjunction / Particle"),
+    "τε": ("conjunction", "Conj", "Conjunction"),
+    "αλλα": ("conjunction", "Conj", "Conjunction"),
+    "γαρ": ("conjunction", "Conj", "Conjunction"),
+    "ουν": ("conjunction", "Conj", "Conjunction"),
+    "οτι": ("conjunction", "Conj", "Conjunction"),
+    "ει": ("conjunction", "Conj", "Conjunction"),
+    "η": ("conjunction", "Conj", "Conjunction / Particle"),
+    "μη": ("conjunction", "Adv/Conj", "Negative particle / Conjunction"),
+    "ου": ("conjunction", "Adv/Conj", "Negative particle"),
+    "ουκ": ("conjunction", "Adv/Conj", "Negative particle"),
+    "ουχ": ("conjunction", "Adv/Conj", "Negative particle"),
+    "ωστε": ("conjunction", "Conj", "Conjunction"),
+    "επει": ("conjunction", "Conj", "Conjunction"),
+    "οτε": ("conjunction", "Conj", "Conjunction"),
+    "ινα": ("conjunction", "Conj", "Conjunction"),
+    "οπωσ": ("conjunction", "Conj", "Conjunction / Adverb"),
+    "καιτοι": ("conjunction", "Conj", "Conjunction"),
+    "μεν": ("particle", "Part", "Particle"),
+    "αρα": ("particle", "Part", "Particle"),
+    "γε": ("particle", "Part", "Particle"),
+    "δη": ("particle", "Part", "Particle"),
+    "μην": ("particle", "Part", "Particle"),
+    "τοι": ("particle", "Part", "Particle"),
+    "ουδε": ("conjunction", "Conj", "Conjunction / Negative particle"),
+    "μηδε": ("conjunction", "Conj", "Conjunction / Negative particle"),
+}
+
+
+def derive_parse_tag(word: str) -> tuple[str, str, str]:
+    """Derive Part of Speech, short parse tag, and detailed parse description for Ancient Greek word form."""
     norm = strip_accents(word)
+
+    # 1. Check known closed-class paradigms (Articles, Pronouns, Prepositions, Conjunctions)
+    if norm in KNOWN_PARADIGMS:
+        return KNOWN_PARADIGMS[norm]
+
+    # 2. Check suffix patterns (using medial sigma 'σ')
     if norm.endswith("ται"):
-        return ("Pres Ind MP 3s", "Present indicative middle/passive 3rd singular")
+        return ("verb", "Pres Ind MP 3s", "Present indicative middle/passive 3rd singular")
     elif norm.endswith("νται"):
-        return ("Pres Ind MP 3p", "Present indicative middle/passive 3rd plural")
+        return ("verb", "Pres Ind MP 3p", "Present indicative middle/passive 3rd plural")
     elif norm.endswith("οντο") or norm.endswith("ετο"):
-        return ("Impf Ind MP 3s/p", "Imperfect indicative middle/passive 3rd person")
+        return ("verb", "Impf Ind MP 3s/p", "Imperfect indicative middle/passive 3rd person")
     elif norm.endswith("ουσιν") or norm.endswith("ουσι"):
-        return ("Pres Ind Act 3p", "Present indicative active 3rd plural")
+        return ("verb", "Pres Ind Act 3p", "Present indicative active 3rd plural")
+    elif norm.endswith("ειν") or norm.endswith("εσθαι") or norm.endswith("σθαι") or norm.endswith("ναι"):
+        return ("verb", "Inf", "Infinitive")
     elif norm.endswith("ει"):
-        return ("Pres Ind Act 3s", "Present indicative active 3rd singular")
-    elif norm.endswith("ους") or norm.endswith("ων"):
-        return ("Gen Pl", "Genitive plural")
-    elif norm.endswith("οις") or norm.endswith("αις") or norm.endswith("σιν"):
-        return ("Dat Pl", "Dative plural")
-    elif norm.endswith("ιν") or norm.endswith("ον") or norm.endswith("αν"):
-        return ("Acc Sg", "Accusative singular")
-    elif norm.endswith("ος"):
-        return ("Nom Sg M", "Nominative singular masculine")
-    elif norm.endswith("α") or norm.endswith("η"):
-        return ("Nom Sg F", "Nominative singular feminine")
-    return ("Form", "Greek word form")
+        return ("verb", "Pres Ind Act 3s", "Present indicative active 3rd singular")
+    elif norm.endswith("οισ") or norm.endswith("οισιν"):
+        return ("noun", "Dat Pl M/N", "Dative plural masculine/neuter")
+    elif norm.endswith("αισ") or norm.endswith("αισιν"):
+        return ("noun", "Dat Pl F", "Dative plural feminine")
+    elif norm.endswith("ουσ"):
+        return ("noun", "Acc Pl M / Gen Sg", "Accusative plural masculine / Genitive singular")
+    elif norm.endswith("ων"):
+        return ("noun", "Gen Pl", "Genitive plural")
+    elif norm.endswith("ου"):
+        return ("noun", "Gen Sg M/N", "Genitive singular masculine/neuter")
+    elif norm.endswith("ω"):
+        return ("noun", "Dat Sg M/N", "Dative singular masculine/neuter")
+    elif norm.endswith("οσ"):
+        return ("noun", "Nom Sg M", "Nominative singular masculine")
+    elif norm.endswith("ησ") or norm.endswith("ασ"):
+        return ("noun", "Gen/Acc Sg F", "Genitive or accusative singular feminine")
+    elif norm.endswith("η") or norm.endswith("α"):
+        return ("noun", "Nom Sg F / Nom Pl N", "Nominative singular feminine / Neuter plural")
+    elif norm.endswith("ον") or norm.endswith("αν") or norm.endswith("ιν"):
+        return ("noun", "Acc Sg / Nom Sg N", "Accusative singular / Neuter nominative singular")
+
+    return ("", "Form", "Greek word form")
 
 
 def run_stage4(manifest: Manifest) -> dict:
@@ -83,10 +266,11 @@ def run_stage4(manifest: Manifest) -> dict:
     for word in tokens:
         norm = strip_accents(word)
         lemma = cltk_dict.get(word) or norm_cltk.get(norm) or word
-        parse_tag, parse_desc = derive_parse_tag(word)
+        pos, parse_tag, parse_desc = derive_parse_tag(word)
         entry = {
             "lemma": lemma,
             "lemma_norm": strip_accents(lemma),
+            "pos": pos,
             "parse": parse_tag,
             "desc": parse_desc
         }

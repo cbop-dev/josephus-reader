@@ -15,6 +15,7 @@ export interface BookData {
 export interface MorphEntry {
   lemma: string;
   lemma_norm?: string;
+  pos?: string;
   parse: string;
   desc: string;
 }
@@ -23,6 +24,7 @@ export interface LsjEntry {
   key: string;
   greek_key?: string;
   lemma?: string;
+  pos?: string;
   gloss?: string;
   def: string;
 }

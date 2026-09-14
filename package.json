@@ -1,7 +1,7 @@
 {
   "name": "josephus-reader",
   "private": true,
-  "version": "0.1.8",
+  "version": "0.1.9",
   "repository": "https://github.com/cbop-dev/josephus-reader",
   "type": "module",
   "scripts": {
@@ -9,6 +9,8 @@
     "build": "python3 -m pipeline.josephus_pipeline all && npm --prefix app run build",
     "preview": "npm --prefix app run preview",
     "check": "npm --prefix app run astro check",
-    "pipeline": "python3 -m pipeline.josephus_pipeline all"
+    "pipeline": "python3 -m pipeline.josephus_pipeline all",
+    "deploy:vps": "./scripts/deploy_vps.sh",
+    "deploy:vps:quick": "./scripts/deploy_vps.sh --no-build"
   }
 }

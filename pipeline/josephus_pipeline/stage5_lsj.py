@@ -18,8 +18,47 @@ def strip_accents(text: str) -> str:
     return unicodedata.normalize("NFC", text).lower().replace("ς", "σ")
 
 
-def parse_lsj_entry(body_str: str) -> tuple[str, str]:
-    """Parse LSJ entry TEI XML snippet, converting BetaCode Greek to Unicode and extracting short glosses."""
+def parse_lsj_entry(key: str, body_str: str) -> tuple[str, str, str]:
+    """Parse LSJ entry TEI XML snippet, converting BetaCode Greek to Unicode, extracting POS and short glosses."""
+    raw_key = re.sub(r"\d+$", "", key).strip()
+    pos = ""
+    if raw_key.endswith("w") or raw_key.endswith("mai") or raw_key.endswith("mi") or raw_key.endswith("w/") or raw_key.endswith("ma/i"):
+        pos = "verb"
+    else:
+        m_pos = re.search(r"<pos[^>]*>(.*?)</pos>", body_str)
+        if m_pos:
+            p = m_pos.group(1).strip().lower()
+            if "adv" in p: pos = "adverb"
+            elif "prep" in p: pos = "preposition"
+            elif "conj" in p: pos = "conjunction"
+            elif "pron" in p: pos = "pronoun"
+            elif "adj" in p: pos = "adjective"
+            elif "subst" in p or "noun" in p: pos = "noun"
+            elif "verb" in p or "v." in p: pos = "verb"
+
+        if not pos:
+            m_gen = re.search(r"<gen[^>]*>(.*?)</gen>", body_str)
+            if m_gen:
+                g = m_gen.group(1).strip()
+                if g in ("o(", "h(", "to/", "o(/", "h(/"):
+                    pos = "noun"
+
+        if not pos:
+            head_text = re.sub(r"<[^>]+>", " ", body_str[:400])
+            head_text = re.sub(r"\s+", " ", head_text)
+            if re.search(r"\b(Conj\.|copulative|disjunctive)\b", head_text, re.I):
+                pos = "conjunction"
+            elif re.search(r"\b(Prep\.|preposition)\b", head_text, re.I):
+                pos = "preposition"
+            elif re.search(r"\b(Pron\.|pronoun|relative pronoun|demonstrative pronoun)\b", head_text, re.I):
+                pos = "pronoun"
+            elif re.search(r"\b(Adv\.|adverb)\b", head_text, re.I):
+                pos = "adverb"
+            elif re.search(r"\b(Part\.|particle)\b", head_text, re.I):
+                pos = "particle"
+            elif re.search(r"\b(Adj\.|adjective)\b", head_text, re.I) or re.search(r"<\s*itype[^>]*>\s*(h/|o/n|a|on)\s*</itype>", body_str):
+                pos = "adjective"
+
     xml_str = '<entryFree>' + body_str + '</entryFree>'
     xml_str = re.sub(r'&(?!amp;|lt;|gt;|quot;|apos;)', '&amp;', xml_str)
 
@@ -29,7 +68,7 @@ def parse_lsj_entry(body_str: str) -> tuple[str, str]:
         # Fallback if XML parsing fails
         clean = re.sub(r'<[^>]+>', ' ', body_str)
         clean = re.sub(r'\s+', ' ', clean).strip()
-        return clean[:3000], ""
+        return clean[:3000], "", pos
 
     # Extract short translation glosses from <tr...> tags
     trs = [tr.text.strip() for tr in root.findall('.//tr') if tr.text and tr.text.strip()]
@@ -71,7 +110,7 @@ def parse_lsj_entry(body_str: str) -> tuple[str, str]:
     if len(clean_def) > 3500:
         clean_def = clean_def[:3500] + "..."
 
-    return clean_def, short_gloss
+    return clean_def, short_gloss, pos
 
 
 def run_stage5(manifest: Manifest) -> dict:
@@ -106,10 +145,11 @@ def run_stage5(manifest: Manifest) -> dict:
                 norm_key = strip_accents(greek_key)
 
                 if norm_key in lemmata_set and norm_key not in dict_map:
-                    clean_def, short_gloss = parse_lsj_entry(body)
+                    clean_def, short_gloss, pos = parse_lsj_entry(key, body)
                     dict_map[norm_key] = {
                         "key": raw_key,
                         "lemma": greek_key,
+                        "pos": pos,
                         "gloss": short_gloss,
                         "def": clean_def
                     }
