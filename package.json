@@ -1,7 +1,7 @@
 {
   "name": "josephus-reader",
   "private": true,
-  "version": "0.1.17",
+  "version": "0.1.18",
   "repository": "https://github.com/cbop-dev/josephus-reader",
   "type": "module",
   "scripts": {
@@ -23,6 +23,7 @@
     "deploy:promote": "npm run deploy:www:promote",
     "deploy:www:history": "./scripts/deploy_www.sh --history",
     "deploy:history": "npm run deploy:www:history",
+    "deploy:www:clean": "./scripts/deploy_www.sh --clean",
     "rollback:www": "./scripts/deploy_www.sh --rollback",
     "rollback": "npm run rollback:www",
     "deploy:vps": "npm run deploy:www",
