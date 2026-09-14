@@ -1,7 +1,7 @@
 {
   "name": "josephus-reader",
   "private": true,
-  "version": "0.1.11",
+  "version": "0.1.12",
   "repository": "https://github.com/cbop-dev/josephus-reader",
   "type": "module",
   "scripts": {
