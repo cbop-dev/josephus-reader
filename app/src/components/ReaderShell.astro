@@ -167,10 +167,15 @@ if (existsSync(jsonPath)) {
           </div>
 
           <div class="mobile-control-item">
-            <span class="control-label">Word Lookup</span>
-            <button type="button" class="mobile-morph-toggle" id="mobile-morph-toggle">
-              Morph
-            </button>
+            <span class="control-label">Word Tools</span>
+            <div class="mobile-lookup-btns">
+              <button type="button" class="mobile-morph-toggle" id="mobile-morph-toggle">
+                Morph
+              </button>
+              <button type="button" class="mobile-highlights-btn" id="mobile-highlights-btn">
+                Highlights<span class="mobile-hl-badge" id="mobile-hl-badge" hidden>0</span>
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -442,6 +447,39 @@ if (existsSync(jsonPath)) {
     mobileMorphBtn?.addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('reader-toggle-morph'));
     });
+
+    const mobileHighlightsBtn = mobileDrawer?.querySelector('#mobile-highlights-btn');
+    mobileHighlightsBtn?.addEventListener('click', () => {
+      setMobileMenu(false);
+      window.dispatchEvent(new CustomEvent('reader-toggle-highlights'));
+    });
+
+    function updateMobileHighlightsBadge(store: any) {
+      if (!store) return;
+      const count = (store.lemmas?.length || 0) + (store.forms?.length || 0);
+      const badge = mobileDrawer?.querySelector('#mobile-hl-badge');
+      if (badge) {
+        if (count > 0) {
+          badge.textContent = String(count);
+          badge.removeAttribute('hidden');
+          mobileHighlightsBtn?.classList.add('has-highlights');
+        } else {
+          badge.setAttribute('hidden', '');
+          mobileHighlightsBtn?.classList.remove('has-highlights');
+        }
+      }
+    }
+
+    window.addEventListener('reader-highlights-changed', (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      updateMobileHighlightsBadge(detail);
+    });
+
+    // Hydrate initial highlights state from localStorage if present
+    try {
+      const raw = localStorage.getItem('josephus_reader_highlights');
+      if (raw) updateMobileHighlightsBadge(JSON.parse(raw));
+    } catch {}
 
     // Listen to Reader state changes to update drawer active buttons
     window.addEventListener('reader-state-changed', (e: Event) => {
@@ -832,14 +870,36 @@ if (existsSync(jsonPath)) {
     font-weight: 600;
     cursor: pointer;
   }
-  .mobile-morph-toggle {
-    padding: 0.3rem 0.8rem;
+  .mobile-lookup-btns {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+  }
+  .mobile-morph-toggle, .mobile-highlights-btn {
+    padding: 0.3rem 0.65rem;
     border-radius: 4px;
     border: 1px solid var(--border, #d4d8d3);
     background: var(--col-bg, #f5f6f2);
     font-size: 0.85rem;
     font-weight: 600;
+    color: var(--text-mid, #545b5c);
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .mobile-highlights-btn.has-highlights {
+    border-color: var(--accent, #1f6f7a);
+    color: var(--accent, #1f6f7a);
+    font-weight: 700;
+  }
+  .mobile-hl-badge {
+    background-color: var(--accent, #1f6f7a);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 10px;
   }
 
   /* Help & Info Modal Styles */

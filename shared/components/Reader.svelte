@@ -135,17 +135,22 @@
     const handleHighlightsChanged = () => {
       refreshHighlights();
     };
+    const handleToggleHighlightsModal = () => {
+      showHighlightsModal = !showHighlightsModal;
+    };
 
     window.addEventListener("reader-set-viewmode", handleSetViewMode);
     window.addEventListener("reader-set-fontsize", handleSetFontSize);
     window.addEventListener("reader-toggle-morph", handleToggleMorph);
     window.addEventListener("reader-highlights-changed", handleHighlightsChanged);
+    window.addEventListener("reader-toggle-highlights", handleToggleHighlightsModal);
 
     return () => {
       window.removeEventListener("reader-set-viewmode", handleSetViewMode);
       window.removeEventListener("reader-set-fontsize", handleSetFontSize);
       window.removeEventListener("reader-toggle-morph", handleToggleMorph);
       window.removeEventListener("reader-highlights-changed", handleHighlightsChanged);
+      window.removeEventListener("reader-toggle-highlights", handleToggleHighlightsModal);
     };
   });
 
