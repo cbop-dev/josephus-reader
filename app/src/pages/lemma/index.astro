@@ -37,8 +37,11 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           </div>
 
           <div class="occurrences-section">
-            <h3>Occurrences in Corpus</h3>
-            <ul id="occurrences-list" class="occurrences-list"></ul>
+            <div class="occurrences-header">
+              <h3>Occurrences in Corpus</h3>
+              <button id="toggle-all-btn" class="toggle-all-btn" style="display: none;">Collapse All</button>
+            </div>
+            <div id="occurrences-container" class="occurrences-container"></div>
           </div>
         </div>
         <div id="error-state" class="status-card error-card" style="display: none;">Lemma not found in corpus.</div>
@@ -46,6 +49,13 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     </div>
 
     <script is:inline define:vars={{ base }}>
+      const WORK_META = {
+        'Antiquities': { title: 'Antiquities of the Jews', abbrev: 'Ant.' },
+        'War': { title: 'The Jewish War', abbrev: 'War' },
+        'Life': { title: 'The Life of Josephus', abbrev: 'Life' },
+        'Apion': { title: 'Against Apion', abbrev: 'C. Ap.' }
+      };
+
       function getGreekBucket(text) {
         if (!text) return 'other';
         const norm = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
@@ -109,28 +119,89 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           document.getElementById('count-badge').textContent = `${entry.count || (entry.occurrences ? entry.occurrences.length : 0)} occurrence(s)`;
           document.getElementById('norm-label').textContent = `Normalized: ${normKey}`;
 
-          const listEl = document.getElementById('occurrences-list');
-          listEl.innerHTML = '';
+          const container = document.getElementById('occurrences-container');
+          container.innerHTML = '';
 
           const occurrences = entry.occurrences || [];
           if (occurrences.length === 0) {
-            listEl.innerHTML = '<li>No occurrences recorded.</li>';
+            container.innerHTML = '<div class="status-card">No occurrences recorded.</div>';
           } else {
+            // Group occurrences by Work -> Book
+            const grouped = {};
             occurrences.forEach(occ => {
-              const li = document.createElement('li');
-              li.className = 'occ-item';
-              
-              const secRef = occ.sec ? ` § ${occ.sec}` : '';
-              const targetUrl = `${base}/${occ.work}/book/${occ.book}`;
-              
-              li.innerHTML = `
-                <a class="occ-link" href="${targetUrl}">
-                  <span class="occ-work">${occ.work} Book ${occ.book}${secRef}</span>
-                  <span class="occ-form">${occ.word}</span>
-                </a>
-              `;
-              listEl.appendChild(li);
+              const w = occ.work || 'Other';
+              const b = occ.book || 1;
+              if (!grouped[w]) grouped[w] = {};
+              if (!grouped[w][b]) grouped[w][b] = [];
+              grouped[w][b].push(occ);
             });
+
+            Object.keys(grouped).forEach(workKey => {
+              const booksMap = grouped[workKey];
+              const meta = WORK_META[workKey] || { title: workKey, abbrev: workKey };
+              
+              let workCount = 0;
+              Object.values(booksMap).forEach(arr => workCount += arr.length);
+
+              const workDetails = document.createElement('details');
+              workDetails.className = 'work-group';
+              workDetails.open = true;
+
+              workDetails.innerHTML = `
+                <summary class="work-summary">
+                  <span class="work-title">${meta.title} <span class="work-abbrev">(${meta.abbrev})</span></span>
+                  <span class="work-count-tag">${workCount} occurrence${workCount > 1 ? 's' : ''}</span>
+                </summary>
+                <div class="work-content"></div>
+              `;
+
+              const workContent = workDetails.querySelector('.work-content');
+
+              Object.keys(booksMap).sort((a,b) => Number(a) - Number(b)).forEach(bookNum => {
+                const bookOccs = booksMap[bookNum];
+
+                const bookDetails = document.createElement('details');
+                bookDetails.className = 'book-group';
+                bookDetails.open = true;
+
+                const pillsHtml = bookOccs.map(occ => {
+                  const secRef = occ.sec ? `§ ${occ.sec}` : `Bk ${occ.book}`;
+                  const anchor = occ.sec ? `#niese-${occ.sec}` : '';
+                  const targetUrl = `${base}/${occ.work}/book/${occ.book}/?hl=${encodeURIComponent(occ.word)}&lemma=${encodeURIComponent(normKey)}${anchor}`;
+
+                  return `
+                    <a class="occ-link" href="${targetUrl}">
+                      <span class="occ-ref">${secRef}</span>
+                      <span class="occ-form">${occ.word}</span>
+                    </a>
+                  `;
+                }).join('');
+
+                bookDetails.innerHTML = `
+                  <summary class="book-summary">
+                    <span class="book-title">Book ${bookNum}</span>
+                    <span class="book-count-tag">(${bookOccs.length})</span>
+                  </summary>
+                  <div class="pills-grid">${pillsHtml}</div>
+                `;
+
+                workContent.appendChild(bookDetails);
+              });
+
+              container.appendChild(workDetails);
+            });
+
+            // Enable Toggle All Button
+            const toggleBtn = document.getElementById('toggle-all-btn');
+            toggleBtn.style.display = 'inline-block';
+            let allOpen = true;
+            toggleBtn.onclick = () => {
+              allOpen = !allOpen;
+              document.querySelectorAll('.work-group, .book-group').forEach(el => {
+                el.open = allOpen;
+              });
+              toggleBtn.textContent = allOpen ? 'Collapse All' : 'Expand All';
+            };
           }
 
           document.getElementById('results-card').style.display = 'block';
@@ -146,7 +217,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   </body>
 </html>
 
-<style>
+<style is:global>
   .lemma-body {
     background-color: var(--page-bg, #eceee7);
     color: var(--text, #171a1c);
@@ -156,7 +227,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     min-height: 100vh;
   }
   .lemma-container {
-    max-width: 800px;
+    max-width: 840px;
     margin: 0 auto;
     padding: 3rem 1.5rem;
   }
@@ -227,47 +298,148 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     color: var(--text-mid, #545b5c);
     font-style: italic;
   }
-  .occurrences-section h3 {
-    font-size: 1.1rem;
-    color: var(--text-mid, #545b5c);
-    margin-top: 0;
-    margin-bottom: 1rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .occurrences-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-  }
-  .occ-item {
-    border: 1px solid var(--border, #e2e8f0);
-    border-radius: 6px;
-    transition: background-color 0.15s ease;
-  }
-  .occ-item:hover {
-    background-color: var(--page-bg, #f7fafc);
-  }
-  .occ-link {
+  .occurrences-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem 1rem;
-    text-decoration: none;
-    color: inherit;
+    margin-bottom: 1.25rem;
   }
-  .occ-work {
+  .occurrences-header h3 {
+    font-size: 1.1rem;
+    color: var(--text-mid, #545b5c);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .toggle-all-btn {
+    background: transparent;
+    border: 1px solid var(--border, #d4d8d3);
+    border-radius: 6px;
+    padding: 0.25rem 0.65rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--accent, #1f6f7a);
-    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .toggle-all-btn:hover {
+    background-color: var(--page-bg, #eceee7);
+  }
+  .work-group {
+    background: var(--col-bg, #ffffff);
+    border: 1px solid var(--border, #d4d8d3);
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  }
+  .work-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 1.25rem;
+    background-color: var(--page-bg, #eceee7);
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+  }
+  .work-summary:hover {
+    background-color: var(--border, #d4d8d3);
+  }
+  .work-title {
+    font-size: 1.05rem;
+    color: var(--accent, #1f6f7a);
+  }
+  .work-abbrev {
+    font-weight: 400;
+    color: var(--text-mid, #545b5c);
+    font-size: 0.92rem;
+  }
+  .work-count-tag {
+    font-size: 0.78rem;
+    font-weight: 700;
+    background: var(--accent, #1f6f7a);
+    color: #ffffff;
+    padding: 0.2rem 0.55rem;
+    border-radius: 12px;
+  }
+  .work-content {
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+  .book-group {
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 8px;
+    padding: 0.5rem 0.85rem;
+    background-color: var(--col-bg, #ffffff);
+  }
+  .book-summary {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-mid, #545b5c);
+    cursor: pointer;
+    user-select: none;
+    padding: 0.3rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .book-summary:hover {
+    color: var(--accent, #1f6f7a);
+  }
+  .book-count-tag {
+    font-size: 0.75rem;
+    color: var(--text-mid, #545b5c);
+    font-weight: 500;
+  }
+  .pills-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.6rem;
+    padding-top: 0.6rem;
+    padding-bottom: 0.25rem;
+  }
+  .occ-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    background-color: var(--page-bg, #eceee7);
+    border: 1px solid var(--border, #d4d8d3);
+    text-decoration: none;
+    color: var(--text, #171a1c);
+    font-size: 0.85rem;
+    line-height: 1.2;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.18s ease-in-out;
+  }
+  .occ-link:hover {
+    background-color: var(--accent, #1f6f7a) !important;
+    border-color: var(--accent, #1f6f7a) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(31, 111, 122, 0.3);
+  }
+  .occ-ref {
+    font-weight: 700;
+    color: var(--accent, #1f6f7a);
+    font-size: 0.82rem;
+    transition: color 0.18s ease-in-out;
+  }
+  .occ-link:hover .occ-ref {
+    color: rgba(255, 255, 255, 0.92) !important;
   }
   .occ-form {
-    font-family: var(--font-greek, "Cardo", serif);
-    font-size: 1.15rem;
+    font-family: var(--font-greek, "Cardo", "Gentium Plus", "Noto Serif", Georgia, serif);
+    font-size: 1.02rem;
     font-weight: 600;
-    color: var(--text, #2d3748);
+    color: var(--text, #171a1c);
+    transition: color 0.18s ease-in-out;
+  }
+  .occ-link:hover .occ-form {
+    color: #ffffff !important;
   }
 </style>

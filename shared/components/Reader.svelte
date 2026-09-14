@@ -4,6 +4,15 @@
   import SectionNavPill from "./SectionNavPill.svelte";
   import { fetchBook, type BookData, type Section } from "../lib/data";
   import { getWork, bookLabel } from "../lib/works";
+  import {
+    getHighlights,
+    getWordHighlightInfo,
+    preloadActiveLemmaFormSets,
+    removeLemmaHighlight,
+    removeFormHighlight,
+    clearAllHighlights,
+    type HighlightStore
+  } from "../lib/highlights";
 
   let {
     work = "Antiquities",
@@ -23,8 +32,17 @@
   let fontSize = $state(18);
   let morphEnabled = $state(true);
   let selectedWord = $state<string | null>(null);
+  let highlightsStore = $state<HighlightStore>({ lemmas: [], forms: [] });
+  let showHighlightsModal = $state(false);
 
   let workMeta = $derived(getWork(work));
+  let totalActiveHighlights = $derived(
+    highlightsStore.lemmas.length + highlightsStore.forms.length
+  );
+
+  function refreshHighlights() {
+    highlightsStore = getHighlights();
+  }
 
   $effect(() => {
     if (typeof window !== "undefined") {
@@ -36,7 +54,65 @@
     }
   });
 
+  let targetWord = $state<string | null>(null);
+  let targetLemma = $state<string | null>(null);
+
+  function readHighlightParams() {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      targetWord = params.get("hl") || null;
+      targetLemma = params.get("lemma") || null;
+    }
+  }
+
+  function cleanWordText(text: string): string {
+    if (!text) return "";
+    return text.replace(/[.,·;:!?"'»«()\[\]]/g, "").trim();
+  }
+
+  function stripAccents(text: string): string {
+    if (!text) return "";
+    return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/ς/g, "σ");
+  }
+
+  function getHighlightInfo(word: string): { className: string; style: string } {
+    // 1. Check Store highlights (Multi-lemma & multi-form highlight engine)
+    const hlInfo = getWordHighlightInfo(word, highlightsStore);
+    if (hlInfo.isForm) {
+      return { className: "word-hl-form", style: hlInfo.style || "" };
+    }
+    if (hlInfo.isLemma) {
+      return { className: "word-hl-lemma", style: hlInfo.style || "" };
+    }
+
+    // 2. Fallback to URL single-target highlights
+    if (targetWord || targetLemma) {
+      const cleanW = cleanWordText(word);
+      if (cleanW) {
+        if (targetWord) {
+          const cleanT = cleanWordText(targetWord);
+          if (cleanW === cleanT || stripAccents(cleanW) === stripAccents(cleanT)) {
+            return { className: "word-hl-primary", style: "" };
+          }
+        }
+        if (targetLemma) {
+          const normW = stripAccents(cleanW);
+          const normL = stripAccents(cleanWordText(targetLemma));
+          if (normW === normL || (normL.length >= 3 && normW.startsWith(normL.slice(0, Math.min(normL.length, 5))))) {
+            return { className: "word-hl-secondary", style: "" };
+          }
+        }
+      }
+    }
+
+    return { className: "", style: "" };
+  }
+
   onMount(() => {
+    readHighlightParams();
+    refreshHighlights();
+    preloadActiveLemmaFormSets();
+
     const handleSetViewMode = (e: Event) => {
       const mode = (e as CustomEvent).detail;
       if (
@@ -56,22 +132,74 @@
     const handleToggleMorph = () => {
       morphEnabled = !morphEnabled;
     };
+    const handleHighlightsChanged = () => {
+      refreshHighlights();
+    };
 
     window.addEventListener("reader-set-viewmode", handleSetViewMode);
     window.addEventListener("reader-set-fontsize", handleSetFontSize);
     window.addEventListener("reader-toggle-morph", handleToggleMorph);
+    window.addEventListener("reader-highlights-changed", handleHighlightsChanged);
 
     return () => {
       window.removeEventListener("reader-set-viewmode", handleSetViewMode);
       window.removeEventListener("reader-set-fontsize", handleSetFontSize);
       window.removeEventListener("reader-toggle-morph", handleToggleMorph);
+      window.removeEventListener("reader-highlights-changed", handleHighlightsChanged);
     };
   });
+
+  function findSectionElement(hash: string): HTMLElement | null {
+    if (typeof window === "undefined" || !hash) return null;
+    const raw = hash.replace(/^#/, "");
+    const decoded = decodeURIComponent(raw);
+
+    // 1. Direct ID match (e.g. niese-1 or niese-1–5)
+    let el = document.getElementById(raw) || document.getElementById(decoded);
+    if (el) return el;
+
+    // 2. Extract section identifier without 'niese-' prefix
+    const cleanSec = decoded.replace(/^niese-/, "").trim();
+
+    // 3. Match data-niese or data-section attribute
+    el = (document.querySelector(`[data-niese="${cleanSec}"]`) as HTMLElement | null) ||
+         (document.querySelector(`[data-section="${cleanSec}"]`) as HTMLElement | null);
+    if (el) return el;
+
+    // 4. Extract leading number (e.g. "1" from "1–5" or "53" from "53–56")
+    const numMatch = cleanSec.match(/^\d+/);
+    if (numMatch) {
+      const num = numMatch[0];
+      el = document.getElementById(`niese-${num}`) ||
+           (document.querySelector(`[data-section="${num}"]`) as HTMLElement | null) ||
+           (document.querySelector(`[data-niese^="${num}"]`) as HTMLElement | null);
+      if (el) return el;
+    }
+
+    return null;
+  }
+
+  function scrollToHash() {
+    if (typeof window === "undefined" || !window.location.hash) return;
+    const hash = window.location.hash;
+
+    const attemptScroll = (attemptsLeft: number) => {
+      const el = findSectionElement(hash);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (attemptsLeft > 0) {
+        setTimeout(() => attemptScroll(attemptsLeft - 1), 80);
+      }
+    };
+
+    setTimeout(() => attemptScroll(8), 50);
+  }
 
   $effect(() => {
     if (bookData && bookData.sections) {
       sections = bookData.sections;
       loading = false;
+      scrollToHash();
     } else {
       loadBookData(work, bookNum);
     }
@@ -83,6 +211,7 @@
       .then((data) => {
         sections = data.sections || [];
         loading = false;
+        scrollToHash();
       })
       .catch((err) => {
         console.error("Failed to load book data:", err);
@@ -188,6 +317,15 @@
         >
           Morph
         </button>
+
+        <button
+          class="ctrl-btn hl-modal-toggle"
+          class:has-highlights={totalActiveHighlights > 0}
+          onclick={() => (showHighlightsModal = !showHighlightsModal)}
+          title="Manage active word & lemma highlights"
+        >
+          Highlights{#if totalActiveHighlights > 0} <span class="hl-badge">{totalActiveHighlights}</span>{/if}
+        </button>
       </div>
     </div>
   </div>
@@ -202,7 +340,12 @@
     {:else}
       <div class={`text-grid view-${viewMode}`}>
         {#each sections as sec, sIdx (sIdx)}
-          <div class="section-row" id={`niese-${sec.section_num || sec.niese}`}>
+          <div
+            class="section-row"
+            id={`niese-${sec.section_num || sec.niese}`}
+            data-niese={sec.niese}
+            data-section={sec.section_num}
+          >
             <div class="section-badge" title={`Niese Section ${sec.niese}`}>
               § {sec.niese}
             </div>
@@ -211,10 +354,12 @@
               {#if viewMode === "parallel" || viewMode === "greek" || viewMode === "stacked"}
                 <div class="greek-col">
                   {#each getWords(sec.grc) as word, wIdx (wIdx)}
+                    {@const hl = getHighlightInfo(word)}
                     <!-- svelte-ignore a11y_click_events_have_key_events -->
                     <!-- svelte-ignore a11y_no_static_element_interactions -->
                     <span
-                      class="greek-word"
+                      class={`greek-word ${hl.className}`.trim()}
+                      style={hl.style}
                       class:interactive={morphEnabled}
                       onclick={() => handleWordClick(word)}>{word}</span
                     >{" "}
@@ -232,12 +377,73 @@
         {/each}
       </div>
     {/if}
-  </main>
 
-  <SectionNavPill {sections} {viewMode} />
+    <SectionNavPill {sections} {work} {bookNum} />
+  </main>
 
   {#if selectedWord}
     <WordPopup word={selectedWord} onClose={() => (selectedWord = null)} />
+  {/if}
+
+  {#if showHighlightsModal}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="hl-modal-backdrop" onclick={() => (showHighlightsModal = false)} role="presentation">
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="hl-modal-card" onclick={(e) => e.stopPropagation()} role="dialog" aria-label="Active Highlights">
+        <div class="hl-modal-header">
+          <h2>Active Highlights ({totalActiveHighlights})</h2>
+          <button class="action-btn" onclick={() => (showHighlightsModal = false)} aria-label="Close">×</button>
+        </div>
+
+        <div class="hl-modal-body">
+          {#if totalActiveHighlights === 0}
+            <div class="hl-empty-msg">
+              No active highlights. Click on any word in the text to open its popup and highlight its lemma or exact form.
+            </div>
+          {:else}
+            {#if highlightsStore.lemmas.length > 0}
+              <div class="hl-modal-section">
+                <h3>(1) Lemma Highlights</h3>
+                <div class="hl-chips-grid">
+                  {#each highlightsStore.lemmas as l (l.lemma)}
+                    <div class="hl-chip lemma-chip" style={`--chip-hue: ${l.hue}`}>
+                      <span class="chip-color-dot"></span>
+                      <span class="chip-text">{l.displayLemma}</span>
+                      <button class="chip-remove-btn" onclick={() => removeLemmaHighlight(l.lemma)} aria-label={`Remove ${l.displayLemma} highlight`}>×</button>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+
+            {#if highlightsStore.forms.length > 0}
+              <div class="hl-modal-section">
+                <h3>(2) Exact Form Highlights</h3>
+                <div class="hl-chips-grid">
+                  {#each highlightsStore.forms as f (f.word)}
+                    <div class="hl-chip form-chip" style={`--chip-hue: ${f.hue}`}>
+                      <span class="chip-color-dot"></span>
+                      <span class="chip-text">{f.displayWord}</span>
+                      <button class="chip-remove-btn" onclick={() => removeFormHighlight(f.word)} aria-label={`Remove ${f.displayWord} highlight`}>×</button>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+          {/if}
+        </div>
+
+        {#if totalActiveHighlights > 0}
+          <div class="hl-modal-footer">
+            <button class="hl-clear-all-btn" onclick={clearAllHighlights}>
+              Clear All Highlights
+            </button>
+          </div>
+        {/if}
+      </div>
+    </div>
   {/if}
 </div>
 
@@ -394,5 +600,157 @@
       white-space: normal;
       padding: 0;
     }
+  }
+
+  /* Highlights Modal & Controls CSS */
+
+  .hl-modal-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .hl-modal-toggle.has-highlights {
+    border-color: var(--accent, #1f6f7a);
+    color: var(--accent, #1f6f7a);
+    font-weight: 700;
+  }
+  .hl-badge {
+    background-color: var(--accent, #1f6f7a);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 10px;
+  }
+  .hl-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 2400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hl-modal-card {
+    background-color: var(--popup-bg, #ffffff);
+    color: var(--text, #171a1c);
+    border: 1px solid var(--border, #d4d8d3);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 520px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem;
+    box-shadow: var(--popup-shadow, 0 10px 30px rgba(0, 0, 0, 0.2));
+  }
+  .hl-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border, #d4d8d3);
+    padding-bottom: 0.6rem;
+    margin-bottom: 1rem;
+  }
+  .hl-modal-header h2 {
+    font-size: 1.2rem;
+    color: var(--accent, #1f6f7a);
+    margin: 0;
+  }
+  .hl-modal-body {
+    overflow-y: auto;
+    max-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .hl-modal-section h3 {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-mid, #545b5c);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.6rem;
+  }
+  .hl-chips-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .hl-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.15s ease;
+  }
+  .lemma-chip {
+    background-color: hsl(var(--chip-hue, 160), 75%, 90%);
+    border: 1.5px solid hsl(var(--chip-hue, 160), 65%, 50%);
+    color: hsl(var(--chip-hue, 160), 85%, 20%);
+  }
+  .form-chip {
+    background-color: hsl(var(--chip-hue, 160), 85%, 72%);
+    border: 2px solid hsl(var(--chip-hue, 160), 80%, 36%);
+    color: hsl(var(--chip-hue, 160), 90%, 15%);
+    font-weight: 700;
+    box-shadow: 0 0 6px hsl(var(--chip-hue, 160), 70%, 55%);
+  }
+  .chip-color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: hsl(var(--chip-hue, 160), 80%, 45%);
+  }
+  .chip-text {
+    font-family: var(--font-greek, serif);
+  }
+  .chip-remove-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    padding: 0 0.1rem;
+  }
+  .chip-remove-btn:hover {
+    opacity: 1;
+  }
+  .hl-empty-msg {
+    text-align: center;
+    color: var(--text-mid, #545b5c);
+    padding: 1.5rem 0;
+    font-size: 0.92rem;
+  }
+  .hl-modal-footer {
+    border-top: 1px solid var(--border, #d4d8d3);
+    padding-top: 0.8rem;
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .hl-clear-all-btn {
+    background-color: transparent;
+    border: 1px solid var(--error, #b22323);
+    color: var(--error, #b22323);
+    border-radius: 6px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .hl-clear-all-btn:hover {
+    background-color: var(--error, #b22323);
+    color: #ffffff;
   }
 </style>

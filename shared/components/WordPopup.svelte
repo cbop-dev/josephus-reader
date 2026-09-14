@@ -1,6 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { fetchMorphForWord, fetchDictionaryForWord, getBase, type MorphEntry, type LsjEntry } from '../lib/data';
+  import {
+    getHighlights,
+    toggleLemmaHighlight,
+    toggleFormHighlight,
+    clearAllHighlights,
+    isLemmaHighlighted,
+    isFormHighlighted,
+    normalizeKey,
+    type HighlightStore
+  } from '../lib/highlights';
 
   let {
     word = '',
@@ -15,17 +25,56 @@
   let dictEntry = $state<LsjEntry | null>(null);
   let loading = $state(true);
   let currentWord = $state('');
+  let highlightsStore = $state<HighlightStore>({ lemmas: [], forms: [] });
   const base = getBase();
+
+  function refreshHighlights() {
+    highlightsStore = getHighlights();
+  }
+
+  let currentLemmaNorm = $derived(normalizeKey(info?.lemma_norm || info?.lemma || word));
+  let currentLemmaDisplay = $derived(info?.lemma || word);
+
+  let activeLemmaObj = $derived(highlightsStore.lemmas.find(l => l.lemma === currentLemmaNorm));
+  let activeFormObj = $derived(highlightsStore.forms.find(f => f.word === normalizeKey(word)));
+  let lemmaIsActive = $derived(!!activeLemmaObj);
+  let formIsActive = $derived(!!activeFormObj);
+  let hasAnyHighlights = $derived(highlightsStore.lemmas.length > 0 || highlightsStore.forms.length > 0);
+
+  function handleToggleLemma() {
+    toggleLemmaHighlight(currentLemmaDisplay, currentLemmaNorm);
+    refreshHighlights();
+  }
+
+  function handleToggleForm() {
+    toggleFormHighlight(word, currentLemmaNorm);
+    refreshHighlights();
+  }
+
+  function handleClearAll() {
+    clearAllHighlights();
+    refreshHighlights();
+  }
 
   function toggleMaximize() {
     isMaximized = !isMaximized;
   }
 
   onMount(() => {
+    refreshHighlights();
     if (word && word !== currentWord) {
       currentWord = word;
       fetchInfo(word);
     }
+    const handleHighlightsChanged = () => refreshHighlights();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('reader-highlights-changed', handleHighlightsChanged);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('reader-highlights-changed', handleHighlightsChanged);
+      }
+    };
   });
 
   $effect(() => {
@@ -95,8 +144,7 @@
               <span class="pos-badge">{info.pos || dictEntry?.pos}</span>
             {/if}
             {#if info.parse && info.parse !== 'Form'}
-              <span class="parse-tag">{info.parse}</span>
-              <span class="parse-desc">{info.desc}</span>
+              <span class="parse-tag" title={info.desc || info.parse}>{info.parse}</span>
             {/if}
           </div>
         {/if}
@@ -129,6 +177,41 @@
         {:else}
           <div class="popup-status">No morphological parse found for "{word}".</div>
         {/if}
+
+        <div class="popup-hl-bar">
+          <span class="hl-label">Highlight:</span>
+          <button
+            class={`hl-toggle-btn ${lemmaIsActive ? 'active' : ''}`}
+            style={lemmaIsActive && activeLemmaObj ? `--btn-hue: ${activeLemmaObj.hue}` : ''}
+            onclick={handleToggleLemma}
+            aria-pressed={lemmaIsActive}
+            title={`Toggle highlight for all forms of lemma "${currentLemmaDisplay}"`}
+          >
+            <span class="hl-btn-icon">{lemmaIsActive ? '✓' : '+'}</span>
+            <span>Lemma</span>
+          </button>
+
+          <button
+            class={`hl-toggle-btn form-btn ${formIsActive ? 'active' : ''}`}
+            style={formIsActive ? `--btn-hue: ${activeFormObj?.hue ?? activeLemmaObj?.hue ?? 160}` : ''}
+            onclick={handleToggleForm}
+            aria-pressed={formIsActive}
+            title={`Toggle highlight for exact form "${word}"`}
+          >
+            <span class="hl-btn-icon">{formIsActive ? '✓' : '+'}</span>
+            <span>Form</span>
+          </button>
+
+          {#if hasAnyHighlights}
+            <button
+              class="hl-clear-btn"
+              onclick={handleClearAll}
+              title="Clear all active highlights"
+            >
+              Clear All
+            </button>
+          {/if}
+        </div>
 
         {#if dictEntry?.def}
           <details class="dict-details">
@@ -354,6 +437,7 @@
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--accent, #1f6f7a);
+    cursor: help;
   }
 
   .parse-desc {
@@ -407,5 +491,113 @@
     font-size: 0.9rem;
     color: var(--text-mid, #545b5c);
     padding: 1rem 0;
+  }
+
+  .popup-hl-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.75rem;
+    margin: 0.75rem 0;
+    background-color: var(--page-bg, #f2f4ef);
+    border: 1px solid var(--border, #d4d8d3);
+    border-radius: 24px;
+    flex-wrap: wrap;
+  }
+
+  .hl-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-mid, #545b5c);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 0.2rem;
+  }
+
+  .hl-toggle-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background-color: var(--col-bg, #f4f6f0);
+    border: 1px solid var(--border, #c5cac0);
+    border-radius: 16px;
+    padding: 0.22rem 0.65rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: var(--font-ui, system-ui, sans-serif);
+    color: var(--text-mid, #545b5c);
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.18s ease;
+    user-select: none;
+  }
+
+  .hl-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    font-size: 0.68rem;
+    font-weight: 700;
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--text-mid, #545b5c);
+    transition: all 0.18s ease;
+  }
+
+  .hl-toggle-btn:hover {
+    background-color: var(--popup-bg, #ffffff);
+    border-color: var(--accent, #1f6f7a);
+    color: var(--accent, #1f6f7a);
+    transform: translateY(-1px);
+  }
+
+  .hl-toggle-btn.active {
+    background-color: hsl(var(--btn-hue, 160), 65%, 42%) !important;
+    border-color: hsl(var(--btn-hue, 160), 75%, 32%) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px hsl(var(--btn-hue, 160), 50%, 35%, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+  }
+
+  .hl-toggle-btn.active .hl-btn-icon {
+    background-color: #ffffff !important;
+    color: hsl(var(--btn-hue, 160), 80%, 25%) !important;
+  }
+
+  .hl-toggle-btn.form-btn.active {
+    background-color: hsl(var(--btn-hue, 160), 85%, 48%) !important;
+    border-color: hsl(var(--btn-hue, 160), 90%, 28%) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 0 10px hsl(var(--btn-hue, 160), 80%, 50%, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.4) !important;
+  }
+
+  .hl-toggle-btn.form-btn.active .hl-btn-icon {
+    background-color: #ffffff !important;
+    color: hsl(var(--btn-hue, 160), 90%, 20%) !important;
+  }
+
+  .hl-clear-btn {
+    background: transparent;
+    border: 1px dashed var(--error, #b22323);
+    color: var(--error, #b22323);
+    border-radius: 16px;
+    padding: 0.22rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin-left: auto;
+  }
+
+  .hl-clear-btn:hover {
+    background-color: var(--error, #b22323);
+    color: #ffffff;
+    border-style: solid;
   }
 </style>
