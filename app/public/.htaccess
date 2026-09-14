@@ -4,7 +4,11 @@ DirectoryIndex index.html
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteBase /
+
+  # Automatically append trailing slash to directory requests if missing
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteCond %{REQUEST_URI} !(.*)/$
+  RewriteRule ^(.*)$ %{REQUEST_URI}/ [L,R=301]
 
   # Serve existing files and directories directly
   RewriteCond %{REQUEST_FILENAME} -f [OR]
@@ -12,6 +16,6 @@ DirectoryIndex index.html
   RewriteRule ^ - [L]
 
   # Map clean route paths to internal index.html files
-  RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
-  RewriteRule ^(.*)$ /$1/index.html [L]
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^(.*)$ $1/index.html [L]
 </IfModule>

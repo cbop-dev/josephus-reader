@@ -108,8 +108,7 @@ def run_stage7(manifest: Manifest) -> dict:
         }
 
     targets = [
-        REPO_ROOT / "app" / "public" / "data",
-        REPO_ROOT / "static" / "data"
+        REPO_ROOT / "app" / "public" / "data"
     ]
 
     for target in targets:

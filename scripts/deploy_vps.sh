@@ -34,8 +34,9 @@ if [ "$SKIP_BUILD" = "true" ]; then
     exit 1
   fi
 else
-  echo "🔨 Building site for VPS deployment (BASE_PATH='')..."
-  BASE_PATH="" npm run build
+  export BASE_PATH="${BASE_PATH:-}"
+  echo "🔨 Building site for VPS deployment (BASE_PATH='${BASE_PATH}')..."
+  npm run build:app
 fi
 
 echo "🚀 Syncing build/ directory to VPS (${VPS_USER}@${VPS_HOST}:${VPS_PATH})..."

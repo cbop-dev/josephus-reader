@@ -6,12 +6,16 @@ import path from 'path';
 export default defineConfig({
   site: process.env.SITE_URL || 'https://cbop-dev.github.io',
   base: process.env.BASE_PATH !== undefined ? process.env.BASE_PATH : '/josephus-reader',
+  trailingSlash: 'always',
   integrations: [
     svelte(),
     sitemap()
   ],
   outDir: '../build',
   vite: {
+    build: {
+      emptyOutDir: true
+    },
     server: {
       fs: {
         allow: ['..']

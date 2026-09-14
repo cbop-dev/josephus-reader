@@ -104,11 +104,11 @@ export function bookLabel(work: Work, n: number): string {
 }
 
 export function workPath(workId: string, book = 1): string {
-  return `/${workId}/book/${book}`;
+  return `/${workId}/book/${book}/`;
 }
 
 export function workLanding(workId: string): string {
-  return `/${workId}`;
+  return `/${workId}/`;
 }
 
 export interface ShelfWork {
