@@ -46,7 +46,7 @@
 <div class="cite-backdrop" onclick={onClose} role="presentation">
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <div class="cite-card" onclick={(e) => e.stopPropagation()} role="dialog" aria-label="Citation Generator">
+  <div class="cite-card" onclick={(e) => e.stopPropagation()} role="dialog" aria-label="Citation Generator" tabindex="-1">
     <div class="cite-header">
       <div class="cite-title-group">
         <h2>Generate Citation</h2>
@@ -105,7 +105,7 @@
 </div>
 
 <style>
-  .cite-backdrop {
+  :global(.cite-backdrop) {
     position: fixed;
     top: 0;
     left: 0;
@@ -120,7 +120,7 @@
     padding: 1.5rem;
   }
 
-  .cite-card {
+  :global(.cite-card) {
     background-color: var(--popup-bg, #ffffff);
     color: var(--text, #171a1c);
     border: 1px solid var(--border, #d4d8d3);
@@ -134,7 +134,7 @@
     overflow: hidden;
   }
 
-  .cite-header {
+  :global(.cite-header) {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -143,20 +143,20 @@
     background-color: var(--col-bg, #f5f6f2);
   }
 
-  .cite-title-group h2 {
+  :global(.cite-title-group h2) {
     margin: 0 0 0.2rem 0;
     font-size: 1.2rem;
     color: var(--accent, #1f6f7a);
     font-family: var(--font-english, "EB Garamond", serif);
   }
 
-  .cite-loc-badge {
+  :global(.cite-loc-badge) {
     font-size: 0.82rem;
     font-weight: 600;
     color: var(--text-mid, #545b5c);
   }
 
-  .cite-close-btn {
+  :global(.cite-close-btn) {
     background: transparent;
     border: none;
     font-size: 1.6rem;
@@ -167,12 +167,12 @@
     border-radius: 4px;
   }
 
-  .cite-close-btn:hover {
+  :global(.cite-close-btn:hover) {
     color: var(--text, #171a1c);
     background: var(--border, #d4d8d3);
   }
 
-  .cite-body {
+  :global(.cite-body) {
     padding: 1.25rem;
     overflow-y: auto;
     display: flex;
@@ -180,7 +180,7 @@
     gap: 0.85rem;
   }
 
-  .cite-tabs-strip {
+  :global(.cite-tabs-strip) {
     display: flex;
     gap: 0.4rem;
     background: var(--page-bg, #eceee7);
@@ -189,7 +189,7 @@
     border: 1px solid var(--border, #d4d8d3);
   }
 
-  .cite-tab-btn {
+  :global(.cite-tab-btn) {
     flex: 1;
     background: transparent;
     border: none;
@@ -203,30 +203,30 @@
     text-align: center;
   }
 
-  .cite-tab-btn:hover {
+  :global(.cite-tab-btn:hover) {
     color: var(--text, #171a1c);
     background: var(--col-bg, #ffffff);
   }
 
-  .cite-tab-btn.active {
+  :global(.cite-tab-btn.active) {
     background: var(--accent, #1f6f7a);
     color: #ffffff;
     box-shadow: 0 2px 6px rgba(31, 111, 122, 0.25);
   }
 
-  .cite-instructions {
+  :global(.cite-instructions) {
     margin: 0;
     font-size: 0.88rem;
     color: var(--text-mid, #545b5c);
   }
 
-  .cite-styles-list {
+  :global(.cite-styles-list) {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
   }
 
-  .cite-style-item {
+  :global(.cite-style-item) {
     display: flex;
     flex-direction: column;
     gap: 0.3rem;
@@ -240,30 +240,30 @@
     width: 100%;
   }
 
-  .cite-style-item:hover {
+  :global(.cite-style-item:hover) {
     border-color: var(--accent, #1f6f7a);
     background: var(--col-bg, #ffffff);
     box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
   }
 
-  .cite-style-item.copied {
+  :global(.cite-style-item.copied) {
     border-color: #2e7d32;
     background-color: #e8f5e9;
   }
 
-  .cite-style-top {
+  :global(.cite-style-top) {
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
 
-  .cite-style-name {
+  :global(.cite-style-name) {
     font-weight: 700;
     font-size: 0.92rem;
     color: var(--accent, #1f6f7a);
   }
 
-  .copy-badge {
+  :global(.copy-badge) {
     font-size: 0.78rem;
     font-weight: 600;
     padding: 0.15rem 0.5rem;
@@ -273,18 +273,18 @@
     color: var(--text-mid, #545b5c);
   }
 
-  .cite-style-item.copied .copy-badge {
+  :global(.cite-style-item.copied .copy-badge) {
     background: #2e7d32;
     color: #ffffff;
     border-color: #2e7d32;
   }
 
-  .cite-style-desc {
+  :global(.cite-style-desc) {
     font-size: 0.78rem;
     color: var(--text-mid, #545b5c);
   }
 
-  .cite-text-preview {
+  :global(.cite-text-preview) {
     margin: 0.2rem 0 0 0;
     white-space: pre-wrap;
     word-break: break-word;

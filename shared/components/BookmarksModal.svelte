@@ -50,7 +50,7 @@
 <div class="bm-backdrop" onclick={onClose} role="presentation">
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <div class="bm-card" onclick={(e) => e.stopPropagation()} role="dialog" aria-label="Bookmarks Manager">
+  <div class="bm-card" onclick={(e) => e.stopPropagation()} role="dialog" aria-label="Bookmarks Manager" tabindex="-1">
     <div class="bm-header">
       <div class="bm-title-group">
         <h2>Bookmarks ({bookmarks.length})</h2>

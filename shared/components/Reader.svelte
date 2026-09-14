@@ -113,7 +113,10 @@
       .replace(/ς/g, "σ");
   }
 
-  function getHighlightInfo(word: string): { className: string; style: string } {
+  function getHighlightInfo(word: string): {
+    className: string;
+    style: string;
+  } {
     const hlInfo = getWordHighlightInfo(word, highlightsStore);
     if (hlInfo.isForm) {
       return { className: "word-hl-form", style: hlInfo.style || "" };
@@ -274,8 +277,12 @@
     const cleanSec = decoded.replace(/^niese-/, "").trim();
 
     el =
-      (document.querySelector(`[data-niese="${cleanSec}"]`) as HTMLElement | null) ||
-      (document.querySelector(`[data-section="${cleanSec}"]`) as HTMLElement | null);
+      (document.querySelector(
+        `[data-niese="${cleanSec}"]`,
+      ) as HTMLElement | null) ||
+      (document.querySelector(
+        `[data-section="${cleanSec}"]`,
+      ) as HTMLElement | null);
     if (el) return el;
 
     const numMatch = cleanSec.match(/^\d+/);
@@ -283,8 +290,12 @@
       const num = numMatch[0];
       el =
         document.getElementById(`niese-${num}`) ||
-        (document.querySelector(`[data-section="${num}"]`) as HTMLElement | null) ||
-        (document.querySelector(`[data-niese^="${num}"]`) as HTMLElement | null);
+        (document.querySelector(
+          `[data-section="${num}"]`,
+        ) as HTMLElement | null) ||
+        (document.querySelector(
+          `[data-niese^="${num}"]`,
+        ) as HTMLElement | null);
       if (el) return el;
     }
 
@@ -359,7 +370,11 @@
   style={`--reader-font-size: ${fontSize}px`}
 >
   <!-- Sticky Reader Controls Strip -->
-  <div class="controls-strip" class:zen-strip={isZenMode} class:zen-expanded={zenExpanded}>
+  <div
+    class="controls-strip"
+    class:zen-strip={isZenMode}
+    class:zen-expanded={zenExpanded}
+  >
     {#if !isZenMode}
       <!-- Standard Bar Layout in Normal Mode -->
       <div class="controls-group view-modes">
@@ -402,18 +417,24 @@
       </div>
 
       <h1 class="work-title-heading">
-        {workMeta?.englishTitle || work}{#if workMeta && workMeta.booksCount > 1} — Book {bookNum}{/if}
+        {workMeta?.englishTitle ||
+          work}{#if workMeta && workMeta.booksCount > 1}
+          — Book {bookNum}{/if}
       </h1>
 
       <div class="right-controls">
         <button
           class="ctrl-btn bm-modal-toggle"
           class:has-bookmarks={totalBookmarks > 0}
-          onclick={() => (showBookmarksModal = !showBookmarksModal)}
+          onclick={(e) => {
+            e.stopPropagation();
+            showBookmarksModal = !showBookmarksModal;
+          }}
           title="View saved bookmarks"
           aria-label="Bookmarks"
         >
-          🔖{#if totalBookmarks > 0} <span class="bm-badge">{totalBookmarks}</span>{/if}
+          🔖{#if totalBookmarks > 0}
+            <span class="bm-badge">{totalBookmarks}</span>{/if}
         </button>
 
         <div class="controls-group font-controls">
@@ -449,10 +470,14 @@
           <button
             class="ctrl-btn hl-modal-toggle"
             class:has-highlights={totalActiveHighlights > 0}
-            onclick={() => (showHighlightsModal = !showHighlightsModal)}
+            onclick={(e) => {
+              e.stopPropagation();
+              showHighlightsModal = !showHighlightsModal;
+            }}
             title="Manage active word & lemma highlights"
           >
-            Highlights{#if totalActiveHighlights > 0} <span class="hl-badge">{totalActiveHighlights}</span>{/if}
+            Highlights{#if totalActiveHighlights > 0}
+              <span class="hl-badge">{totalActiveHighlights}</span>{/if}
           </button>
         </div>
 
@@ -471,7 +496,9 @@
       <!-- Minimal Zen Mode Header & Slide-down Drawer -->
       <div class="zen-header-row">
         <h1 class="work-title-heading zen-title">
-          {workMeta?.englishTitle || work}{#if workMeta && workMeta.booksCount > 1} — Book {bookNum}{/if}
+          {workMeta?.englishTitle ||
+            work}{#if workMeta && workMeta.booksCount > 1}
+            — Book {bookNum}{/if}
         </h1>
 
         <div class="zen-header-actions">
@@ -479,7 +506,9 @@
             class="ctrl-btn zen-caret-btn"
             class:expanded={zenExpanded}
             onclick={() => (zenExpanded = !zenExpanded)}
-            title={zenExpanded ? "Collapse controls drawer" : "Expand controls drawer"}
+            title={zenExpanded
+              ? "Collapse controls drawer"
+              : "Expand controls drawer"}
             aria-label={zenExpanded ? "Collapse controls" : "Expand controls"}
             aria-expanded={zenExpanded}
           >
@@ -574,7 +603,8 @@
             onclick={() => (showHighlightsModal = !showHighlightsModal)}
             title="Manage active word & lemma highlights"
           >
-            Highlights{#if totalActiveHighlights > 0} <span class="hl-badge">{totalActiveHighlights}</span>{/if}
+            Highlights{#if totalActiveHighlights > 0}
+              <span class="hl-badge">{totalActiveHighlights}</span>{/if}
           </button>
         </div>
 
@@ -585,7 +615,8 @@
           title="View saved bookmarks"
           aria-label="Bookmarks"
         >
-          🔖{#if totalBookmarks > 0} <span class="bm-badge">{totalBookmarks}</span>{/if}
+          🔖{#if totalBookmarks > 0}
+            <span class="bm-badge">{totalBookmarks}</span>{/if}
         </button>
       </div>
     {/if}
@@ -603,7 +634,9 @@
         {#each sections as sec, sIdx (sIdx)}
           {@const nieseSecStr = String(sec.niese || sec.section_num)}
           {@const secNumStr = String(sec.section_num || sec.niese)}
-          {@const isBm = bookmarksList.some((bm) => bm.id === `${work}-${bookNum}-${secNumStr}`)}
+          {@const isBm = bookmarksList.some(
+            (bm) => bm.id === `${work}-${bookNum}-${secNumStr}`,
+          )}
           <div
             class="section-row"
             id={`niese-${sec.section_num || sec.niese}`}
@@ -618,7 +651,10 @@
                 <button
                   class="sec-action-btn bm-star-btn"
                   class:is-bookmarked={isBm}
-                  onclick={() => handleToggleBookmark(secNumStr, sec.eng || sec.grc)}
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    handleToggleBookmark(secNumStr, sec.eng || sec.grc);
+                  }}
                   title={isBm ? "Remove bookmark" : "Bookmark section"}
                   aria-label="Bookmark section"
                 >
@@ -626,7 +662,10 @@
                 </button>
                 <button
                   class="sec-action-btn cite-trigger-btn"
-                  onclick={() => (citationSecNum = nieseSecStr)}
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    citationSecNum = nieseSecStr;
+                  }}
                   title="Generate academic citation for this section"
                   aria-label="Cite section"
                 >
@@ -654,7 +693,10 @@
                   <button
                     class="block-copy-btn"
                     class:copied={copiedBlockId === `niese-${secNumStr}-grc`}
-                    onclick={() => copyBlockText(nieseSecStr, sec.grc, 'grc')}
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      copyBlockText(nieseSecStr, sec.grc, "grc");
+                    }}
                     title="Copy Greek text with reference"
                     aria-label="Copy Greek text"
                   >
@@ -675,7 +717,10 @@
                   <button
                     class="block-copy-btn"
                     class:copied={copiedBlockId === `niese-${secNumStr}-eng`}
-                    onclick={() => copyBlockText(nieseSecStr, sec.eng, 'eng')}
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      copyBlockText(nieseSecStr, sec.eng, "eng");
+                    }}
                     title="Copy English text with reference"
                     aria-label="Copy English text"
                   >
@@ -716,19 +761,34 @@
   {#if showHighlightsModal}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div class="hl-modal-backdrop" onclick={() => (showHighlightsModal = false)} role="presentation">
+    <div
+      class="hl-modal-backdrop"
+      onclick={() => (showHighlightsModal = false)}
+      role="presentation"
+    >
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="hl-modal-card" onclick={(e) => e.stopPropagation()} role="dialog" aria-label="Active Highlights">
+      <div
+        class="hl-modal-card"
+        onclick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label="Active Highlights"
+        tabindex="-1"
+      >
         <div class="hl-modal-header">
           <h2>Active Highlights ({totalActiveHighlights})</h2>
-          <button class="action-btn" onclick={() => (showHighlightsModal = false)} aria-label="Close">×</button>
+          <button
+            class="action-btn"
+            onclick={() => (showHighlightsModal = false)}
+            aria-label="Close">×</button
+          >
         </div>
 
         <div class="hl-modal-body">
           {#if totalActiveHighlights === 0}
             <div class="hl-empty-msg">
-              No active highlights. Click on any word in the text to open its popup and highlight its lemma or exact form.
+              No active highlights. Click on any word in the text to open its
+              popup and highlight its lemma or exact form.
             </div>
           {:else}
             {#if highlightsStore.lemmas.length > 0}
@@ -736,10 +796,18 @@
                 <h3>(1) Lemma Highlights</h3>
                 <div class="hl-chips-grid">
                   {#each highlightsStore.lemmas as l (l.lemma)}
-                    <div class="hl-chip lemma-chip" style={`--chip-hue: ${l.hue}`}>
+                    <div
+                      class="hl-chip lemma-chip"
+                      style={`--chip-hue: ${l.hue}`}
+                    >
                       <span class="chip-color-dot"></span>
                       <span class="chip-text">{l.displayLemma}</span>
-                      <button class="chip-remove-btn" onclick={() => removeLemmaHighlight(l.lemma)} aria-label={`Remove ${l.displayLemma} highlight`}>×</button>
+                      <button
+                        class="chip-remove-btn"
+                        onclick={() => removeLemmaHighlight(l.lemma)}
+                        aria-label={`Remove ${l.displayLemma} highlight`}
+                        >×</button
+                      >
                     </div>
                   {/each}
                 </div>
@@ -751,10 +819,18 @@
                 <h3>(2) Exact Form Highlights</h3>
                 <div class="hl-chips-grid">
                   {#each highlightsStore.forms as f (f.word)}
-                    <div class="hl-chip form-chip" style={`--chip-hue: ${f.hue}`}>
+                    <div
+                      class="hl-chip form-chip"
+                      style={`--chip-hue: ${f.hue}`}
+                    >
                       <span class="chip-color-dot"></span>
                       <span class="chip-text">{f.displayWord}</span>
-                      <button class="chip-remove-btn" onclick={() => removeFormHighlight(f.word)} aria-label={`Remove ${f.displayWord} highlight`}>×</button>
+                      <button
+                        class="chip-remove-btn"
+                        onclick={() => removeFormHighlight(f.word)}
+                        aria-label={`Remove ${f.displayWord} highlight`}
+                        >×</button
+                      >
                     </div>
                   {/each}
                 </div>
@@ -903,10 +979,11 @@
     max-height: 0;
     opacity: 0;
     overflow: hidden;
-    transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-                opacity 0.2s ease,
-                padding 0.2s ease,
-                margin 0.2s ease;
+    transition:
+      max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 0.2s ease,
+      padding 0.2s ease,
+      margin 0.2s ease;
     border-top: 1px solid transparent;
     padding-top: 0;
     margin-top: 0;
@@ -1062,7 +1139,9 @@
     flex-direction: column;
     gap: 0.85rem;
     scroll-margin-top: 110px;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
   .section-row:target {
