@@ -456,7 +456,7 @@
   .reader-container {
     max-width: 1300px;
     margin: 0 auto;
-    padding: 1rem 1.5rem;
+    padding: 1rem 1.5rem 5.5rem 1.5rem;
     font-size: var(--reader-font-size, 18px);
   }
   .work-title-heading {
