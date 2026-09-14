@@ -31,7 +31,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          python3 -m pip install pyyaml
+          npm ci
 
       - name: Build
         env:
