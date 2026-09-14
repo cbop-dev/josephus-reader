@@ -34,6 +34,7 @@ jobs:
         run: |
           python3 -m pip install -r requirements.txt
           npm ci
+          npm --prefix app ci
 
       - name: Build
         env:
