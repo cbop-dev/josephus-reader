@@ -37,13 +37,14 @@ jobs:
 
       - name: Build
         env:
+          OUT_DIR: '../build/github'
           BASE_PATH: '/${{ github.event.repository.name }}'
         run: npm --prefix app run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'build/'
+          path: 'build/github/'
 
       - name: Deploy to GitHub Pages
         id: deployment
