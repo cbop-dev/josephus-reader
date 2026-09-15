@@ -115,10 +115,30 @@ body {
   background-color: rgba(0, 0, 0, 0.4) !important;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  z-index: 9999 !important;
+  z-index: 2500 !important;
   display: flex !important;
   align-items: flex-end;
   justify-content: center;
+}
+
+/* ── Corpus Search / Highlights Overlay ───────────────────────────── */
+.search-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background-color: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.search-card {
+  position: relative !important;
+  z-index: 10001 !important;
 }
 
 @media (min-width: 640px) {

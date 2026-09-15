@@ -4,6 +4,9 @@
   "version": "0.1.15",
   "private": true,
   "scripts": {
+    "clean": "rm -rf .astro node_modules/.vite ../build/local ../build/www",
+    "prebuild:local": "npm run clean",
+    "prebuild:www": "npm run clean",
     "dev": "astro dev",
     "build": "astro build",
     "build:local": "OUT_DIR=../build/local BASE_PATH=/josephus-reader astro build",

@@ -219,8 +219,9 @@
       <div class="occurrences-tree">
         {#each Object.entries(lemmaOccurrencesGrouped) as [workId, bookGroup] (workId)}
           {@const workMeta = getWork(workId)}
+          {@const totalWorkOccs = Object.values(bookGroup).reduce((acc, occs) => acc + occs.length, 0)}
           <details class="work-results-group">
-            <summary class="work-results-title">{workMeta?.englishTitle || workId}</summary>
+            <summary class="work-results-title">{workMeta?.englishTitle || workId} ({totalWorkOccs})</summary>
             {#each Object.entries(bookGroup) as [bNumStr, occs] (bNumStr)}
               {@const bNum = Number(bNumStr)}
               {@const bookKey = `${workId}-${bNumStr}`}

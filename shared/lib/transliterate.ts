@@ -76,7 +76,10 @@ export function transliterateLatinToGreek(input: string): string {
     i++;
   }
 
-  // Adjust final sigma (σ -> ς) at word boundaries
+  // 1. Convert non-trailing final sigma (ς) into medial sigma (σ)
+  res = res.replace(/ς(?![.·,;:!?"'\s)\]]|$)/g, 'σ');
+
+  // 2. Convert trailing medial sigma (σ) into final sigma (ς)
   res = res.replace(/σ(?=[.·,;:!?"'\s)\]]|$)/g, 'ς');
 
   return res;

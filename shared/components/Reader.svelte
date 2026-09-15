@@ -1,10 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import WordPopup from "./WordPopup.svelte";
+  import LemmaWindow from "./LemmaWindow.svelte";
   import SectionNavPill from "./SectionNavPill.svelte";
   import CitationModal from "./CitationModal.svelte";
   import BookmarksModal from "./BookmarksModal.svelte";
-  import SearchModal from "./SearchModal.svelte";
   import { fetchBook, type BookData, type Section } from "../lib/data";
   import { getWork } from "../lib/works";
   import { formatSourceReference } from "../lib/citation";
@@ -40,19 +39,29 @@
   let viewMode = $state<"parallel" | "greek" | "english" | "stacked">(
     "parallel",
   );
+  let lastDualMode = $state<"parallel" | "stacked">("parallel");
+
+  $effect(() => {
+    if (viewMode === "parallel" || viewMode === "stacked") {
+      lastDualMode = viewMode;
+    }
+  });
   let fontSize = $state(18);
   let morphEnabled = $state(true);
   let selectedWord = $state<string | null>(null);
   let highlightsStore = $state<HighlightStore>({ lemmas: [], forms: [] });
-  let showHighlightsModal = $state(false);
 
   let isZenMode = $state(false);
   let zenExpanded = $state(false);
   let showBookmarksModal = $state(false);
-  let showSearchModal = $state(false);
-  let searchModalTab = $state<"lemma" | "custom" | "highlights">("lemma");
-  let searchInitialLemmaNorm = $state("");
-  let searchInitialLemmaDisplay = $state("");
+
+  let showLemmaWindow = $state(false);
+  let lemmaWindowTab = $state<"search" | "info" | "highlights">("search");
+  let lemmaWindowSubTab = $state<"lemma" | "custom">("lemma");
+  let lemmaWindowWord = $state("");
+  let lemmaWindowLemmaNorm = $state("");
+  let lemmaWindowLemmaDisplay = $state("");
+
   let citationSecNum = $state<string | null>(null);
   let bookmarksList = $state<BookmarkItem[]>([]);
   let copiedBlockId = $state<string | null>(null);
@@ -175,7 +184,7 @@
 
     if (e.key === "Escape") {
       if (isZenMode) isZenMode = false;
-      if (showHighlightsModal) showHighlightsModal = false;
+      if (showLemmaWindow) showLemmaWindow = false;
       if (showBookmarksModal) showBookmarksModal = false;
       if (citationSecNum !== null) citationSecNum = null;
       return;
@@ -230,35 +239,61 @@
     const handleToggleZen = () => {
       toggleZenMode();
     };
+    const handleToggleDualMode = () => {
+      if (viewMode === "parallel") {
+        viewMode = "stacked";
+      } else if (viewMode === "stacked") {
+        viewMode = "parallel";
+      } else {
+        viewMode = lastDualMode;
+      }
+    };
     const handleHighlightsChanged = () => {
       refreshHighlights();
     };
     const handleBookmarksChanged = () => {
       refreshBookmarks();
     };
+    const handleToggleBookmarksModal = () => {
+      showBookmarksModal = !showBookmarksModal;
+    };
     const handleToggleHighlightsModal = () => {
-      searchModalTab = "highlights";
-      showSearchModal = true;
+      lemmaWindowTab = "highlights";
+      showLemmaWindow = true;
     };
     const handleToggleSearchModal = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail) {
-        if (detail.tab) searchModalTab = detail.tab;
-        searchInitialLemmaNorm = detail.lemmaNorm || "";
-        searchInitialLemmaDisplay = detail.lemmaDisplay || "";
+        if (detail.tab === "custom" || detail.tab === "lemma") {
+          lemmaWindowTab = "search";
+          lemmaWindowSubTab = detail.tab;
+        } else if (detail.tab === "highlights") {
+          lemmaWindowTab = "highlights";
+        } else if (detail.tab === "info") {
+          lemmaWindowTab = "info";
+        } else {
+          lemmaWindowTab = "search";
+        }
+        lemmaWindowLemmaNorm = detail.lemmaNorm || "";
+        lemmaWindowLemmaDisplay = detail.lemmaDisplay || "";
+      } else {
+        lemmaWindowTab = "search";
+        lemmaWindowSubTab = "lemma";
       }
-      showSearchModal = true;
+      showLemmaWindow = true;
     };
 
     window.addEventListener("reader-set-viewmode", handleSetViewMode);
     window.addEventListener("reader-set-fontsize", handleSetFontSize);
     window.addEventListener("reader-toggle-morph", handleToggleMorph);
     window.addEventListener("reader-toggle-zen", handleToggleZen);
+    window.addEventListener("reader-toggle-dualmode", handleToggleDualMode);
     window.addEventListener(
       "reader-highlights-changed",
       handleHighlightsChanged,
     );
     window.addEventListener("reader-bookmarks-changed", handleBookmarksChanged);
+    window.addEventListener("reader-toggle-bookmarks", handleToggleBookmarksModal);
     window.addEventListener(
       "reader-toggle-highlights",
       handleToggleHighlightsModal,
@@ -272,6 +307,7 @@
       window.removeEventListener("reader-set-fontsize", handleSetFontSize);
       window.removeEventListener("reader-toggle-morph", handleToggleMorph);
       window.removeEventListener("reader-toggle-zen", handleToggleZen);
+      window.removeEventListener("reader-toggle-dualmode", handleToggleDualMode);
       window.removeEventListener(
         "reader-highlights-changed",
         handleHighlightsChanged,
@@ -279,6 +315,10 @@
       window.removeEventListener(
         "reader-bookmarks-changed",
         handleBookmarksChanged,
+      );
+      window.removeEventListener(
+        "reader-toggle-bookmarks",
+        handleToggleBookmarksModal,
       );
       window.removeEventListener(
         "reader-toggle-highlights",
@@ -374,6 +414,9 @@
     const cleanWord = w.replace(/[.,·;:!?"'»«]+$/, "").replace(/^[«»"']/, "");
     if (cleanWord) {
       selectedWord = cleanWord;
+      lemmaWindowWord = cleanWord;
+      lemmaWindowTab = "info";
+      showLemmaWindow = true;
     }
   }
 
@@ -488,19 +531,23 @@
           <button
             class="ctrl-btn morph-toggle"
             class:active={morphEnabled}
-            onclick={() => (morphEnabled = !morphEnabled)}
-            title="Toggle Word Info lookup popups [W]"
+            onclick={(e) => {
+              e.stopPropagation();
+              morphEnabled = !morphEnabled;
+            }}
+            title="Toggle Word Info / Click-to-view [W]"
           >
             W
           </button>
 
           <button
             class="ctrl-btn search-toggle-btn"
-            class:active={showSearchModal && searchModalTab !== "highlights"}
+            class:active={showLemmaWindow && lemmaWindowTab === "search"}
             onclick={(e) => {
               e.stopPropagation();
-              searchModalTab = "lemma";
-              showSearchModal = true;
+              lemmaWindowTab = "search";
+              lemmaWindowSubTab = "lemma";
+              showLemmaWindow = true;
             }}
             title="Open Corpus Search [S]"
           >
@@ -510,11 +557,11 @@
           <button
             class="ctrl-btn hl-modal-toggle"
             class:has-highlights={totalActiveHighlights > 0}
-            class:active={showSearchModal && searchModalTab === "highlights"}
+            class:active={showLemmaWindow && lemmaWindowTab === "highlights"}
             onclick={(e) => {
               e.stopPropagation();
-              searchModalTab = "highlights";
-              showSearchModal = true;
+              lemmaWindowTab = "highlights";
+              showLemmaWindow = true;
             }}
             title="Open Active Highlights [H]"
           >
@@ -633,17 +680,22 @@
           <button
             class="ctrl-btn morph-toggle"
             class:active={morphEnabled}
-            onclick={() => (morphEnabled = !morphEnabled)}
-            title="Toggle Word Info lookup popups (W)"
+            onclick={(e) => {
+              e.stopPropagation();
+              morphEnabled = !morphEnabled;
+            }}
+            title="Toggle Word Info / Click-to-view [W]"
           >
             W
           </button>
 
           <button
             class="ctrl-btn search-toggle-btn"
+            class:active={showLemmaWindow && lemmaWindowTab === "search"}
             onclick={() => {
-              searchModalTab = "lemma";
-              showSearchModal = true;
+              lemmaWindowTab = "search";
+              lemmaWindowSubTab = "lemma";
+              showLemmaWindow = true;
             }}
             title="Open Corpus Search (S)"
           >
@@ -653,9 +705,10 @@
           <button
             class="ctrl-btn hl-modal-toggle"
             class:has-highlights={totalActiveHighlights > 0}
+            class:active={showLemmaWindow && lemmaWindowTab === "highlights"}
             onclick={() => {
-              searchModalTab = "highlights";
-              showSearchModal = true;
+              lemmaWindowTab = "highlights";
+              showLemmaWindow = true;
             }}
             title="Open Active Highlights (H)"
           >
@@ -797,10 +850,6 @@
     <SectionNavPill {sections} {work} {bookNum} {isZenMode} />
   </main>
 
-  {#if selectedWord}
-    <WordPopup word={selectedWord} onClose={() => (selectedWord = null)} />
-  {/if}
-
   {#if citationSecNum}
     <CitationModal
       {work}
@@ -814,130 +863,22 @@
     <BookmarksModal onClose={() => (showBookmarksModal = false)} />
   {/if}
 
-  {#if showSearchModal}
-    <SearchModal
+  {#if showLemmaWindow}
+    <LemmaWindow
       {work}
       {bookNum}
-      initialTab={searchModalTab}
-      initialLemmaNorm={searchInitialLemmaNorm}
-      initialLemmaDisplay={searchInitialLemmaDisplay}
-      onClose={() => { showSearchModal = false; searchInitialLemmaNorm = ""; searchInitialLemmaDisplay = ""; }}
+      initialTab={lemmaWindowTab}
+      initialSearchSubTab={lemmaWindowSubTab}
+      initialWord={lemmaWindowWord}
+      initialLemmaNorm={lemmaWindowLemmaNorm}
+      initialLemmaDisplay={lemmaWindowLemmaDisplay}
+      onClose={() => {
+        showLemmaWindow = false;
+        lemmaWindowWord = "";
+        lemmaWindowLemmaNorm = "";
+        lemmaWindowLemmaDisplay = "";
+      }}
     />
-  {/if}
-
-  {#if showHighlightsModal}
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="hl-modal-backdrop"
-      onclick={() => (showHighlightsModal = false)}
-      role="presentation"
-    >
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div
-        class="hl-modal-card"
-        onclick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-label="Active Highlights"
-        tabindex="-1"
-      >
-        <div class="hl-modal-header">
-          <h2>Active Highlights ({totalActiveHighlights})</h2>
-          <button
-            class="action-btn"
-            onclick={() => (showHighlightsModal = false)}
-            aria-label="Close">×</button
-          >
-        </div>
-
-        <div class="hl-modal-body">
-          {#if totalActiveHighlights === 0}
-            <div class="hl-empty-msg">
-              No active highlights. Click on any word in the text to open its
-              popup and highlight its lemma or exact form.
-            </div>
-          {:else}
-            {#if highlightsStore.lemmas.length > 0}
-              <div class="hl-modal-section">
-                <h3>(1) Lemma Highlights</h3>
-                <div class="hl-chips-grid">
-                  {#each highlightsStore.lemmas as l (l.lemma)}
-                    <div
-                      class="hl-chip lemma-chip"
-                      style={`--chip-hue: ${l.hue}`}
-                    >
-                      <span class="chip-color-dot"></span>
-                      <span class="chip-text">{l.displayLemma}</span>
-                      <button
-                        class="chip-remove-btn"
-                        onclick={() => removeLemmaHighlight(l.lemma)}
-                        aria-label={`Remove ${l.displayLemma} highlight`}
-                        >×</button
-                      >
-                    </div>
-                  {/each}
-                </div>
-              </div>
-            {/if}
-
-            {#if highlightsStore.forms.length > 0}
-              <div class="hl-modal-section">
-                <h3>(2) Exact Form Highlights</h3>
-                <div class="hl-chips-grid">
-                  {#each highlightsStore.forms as f (f.word)}
-                    <div
-                      class="hl-chip form-chip"
-                      style={`--chip-hue: ${f.hue}`}
-                    >
-                      <span class="chip-color-dot"></span>
-                      <span class="chip-text">{f.displayWord}</span>
-                      <button
-                        class="chip-remove-btn"
-                        onclick={() => removeFormHighlight(f.word)}
-                        aria-label={`Remove ${f.displayWord} highlight`}
-                        >×</button
-                      >
-                    </div>
-                  {/each}
-                </div>
-              </div>
-            {/if}
-
-            {#if highlightsStore.phrases && highlightsStore.phrases.length > 0}
-              <div class="hl-modal-section">
-                <h3>(3) Custom Phrase Highlights</h3>
-                <div class="hl-chips-grid">
-                  {#each highlightsStore.phrases as p (p.phrase)}
-                    <div
-                      class="hl-chip phrase-chip"
-                      style={`--chip-hue: ${p.hue}`}
-                    >
-                      <span class="chip-color-dot"></span>
-                      <span class="chip-text">{p.displayPhrase}</span>
-                      <button
-                        class="chip-remove-btn"
-                        onclick={() => removePhraseHighlight(p.displayPhrase)}
-                        aria-label={`Remove ${p.displayPhrase} highlight`}
-                        >×</button
-                      >
-                    </div>
-                  {/each}
-                </div>
-              </div>
-            {/if}
-          {/if}
-        </div>
-
-        {#if totalActiveHighlights > 0}
-          <div class="hl-modal-footer">
-            <button class="hl-clear-all-btn" onclick={clearAllHighlights}>
-              Clear All Highlights
-            </button>
-          </div>
-        {/if}
-      </div>
-    </div>
   {/if}
 </div>
 

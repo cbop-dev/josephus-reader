@@ -9,6 +9,11 @@ import {
   getCanonicalAttestedForms,
   isFormFilterMatch
 } from '../shared/lib/highlights.ts';
+import {
+  transliterateLatinToGreek,
+  normalizeGreekSearch,
+  findMatchInText
+} from '../shared/lib/transliterate.ts';
 
 test('Custom Phrase Matching - Exact Word & Movable Nu Matching', () => {
   const queryNorm = normalizeKey('μελλει'); // "μελλει"
@@ -97,4 +102,34 @@ test('Lemma Accent Normalization - No Grave Accent on Lemmata', () => {
   assert.equal(normalizeLemmaAccents('περὶ'), 'περί');
   assert.equal(normalizeLemmaAccents('μετὰ'), 'μετά');
   assert.equal(normalizeLemmaAccents('κατὰ'), 'κατά');
+});
+
+test('Sigma Conversion & Search Result Equivalence (σ / ς)', () => {
+  // 1. Transliteration Rules: non-trailing ς -> σ, trailing σ -> ς
+  assert.equal(transliterateLatinToGreek('πιςτις'), 'πιστις', 'non-trailing ς before τ must convert to σ');
+  assert.equal(transliterateLatinToGreek('πιστισ'), 'πιστις', 'trailing σ at word end must convert to ς');
+  assert.equal(transliterateLatinToGreek('πιστις'), 'πιστις', 'canonical σ/ς placement stays unchanged');
+  assert.equal(transliterateLatinToGreek('pistis'), 'πιστις', 'Latin pistis produces canonical πιστις');
+  assert.equal(transliterateLatinToGreek('pijtis'), 'πιστις', 'Latin betacode j in pijtis produces canonical πιστις');
+  assert.equal(transliterateLatinToGreek('πιςτις και ςιγμα'), 'πιστις και σιγμα', 'multi-word non-trailing ς must convert to σ');
+
+  // 2. Search Result Equivalence: "πιςτις", "πιστισ", and "πιστις" must all normalize to identical keys
+  const norm1 = normalizeKey('πιςτις');
+  const norm2 = normalizeKey('πιστισ');
+  const norm3 = normalizeKey('πιστις');
+  assert.equal(norm1, norm2, 'πιςτις and πιστισ must normalize to identical keys');
+  assert.equal(norm2, norm3, 'πιστισ and πιστις must normalize to identical keys');
+  assert.equal(norm1, 'πιστισ', 'all sigma variations normalize to medial sigmas');
+
+  const gNorm1 = normalizeGreekSearch('πιςτις');
+  const gNorm2 = normalizeGreekSearch('πιστισ');
+  const gNorm3 = normalizeGreekSearch('πιστις');
+  assert.equal(gNorm1, gNorm2, 'normalizeGreekSearch(πιςτις) === normalizeGreekSearch(πιστισ)');
+  assert.equal(gNorm2, gNorm3, 'normalizeGreekSearch(πιστισ) === normalizeGreekSearch(πιστις)');
+
+  // 3. Match Verification: findMatchInText returns matches regardless of sigma variant
+  const text = 'ἡ δὲ πίστις αὕτη ἐστίν';
+  assert.ok(findMatchInText(text, 'πιςτις'), 'search query πιςτις must match text πίστις');
+  assert.ok(findMatchInText(text, 'πιστισ'), 'search query πιστισ must match text πίστις');
+  assert.ok(findMatchInText(text, 'πιστις'), 'search query πιστις must match text πίστις');
 });

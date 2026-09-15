@@ -233,7 +233,7 @@ if (existsSync(jsonPath)) {
       <section class="info-modal-section">
         <h4>Platform Software Architecture</h4>
         <p>
-          Built on the open-source platform architecture of John H. Boyer's <a href="https://github.com/johnhboyer-sys/plato-reader" target="_blank" rel="noopener noreferrer">Plato Reader / Josephus Project</a> under the <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">MIT License</a>.
+          Built on the open-source platform architecture of John H. Boyer's <a href="https://github.com/johnhboyer-sys/plato-reader" target="_blank" rel="noopener noreferrer">Plato Reader</a> under the <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">MIT License</a>.
         </p>
       </section>
 
@@ -306,6 +306,10 @@ if (existsSync(jsonPath)) {
           <tr>
             <td><kbd>E</kbd></td>
             <td>Show English text only</td>
+          </tr>
+          <tr>
+            <td><kbd>D</kbd></td>
+            <td>Toggle Dual language modes (Parallel ◧ ↔ Stacked ⬓)</td>
           </tr>
           <tr>
             <td><kbd>Z</kbd></td>
@@ -591,6 +595,14 @@ if (existsSync(jsonPath)) {
         case 'e':
           e.preventDefault();
           window.dispatchEvent(new CustomEvent('reader-set-viewmode', { detail: 'english' }));
+          break;
+        case 'd':
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('reader-toggle-dualmode'));
+          break;
+        case 'b':
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('reader-toggle-bookmarks'));
           break;
         case 'w':
           e.preventDefault();
