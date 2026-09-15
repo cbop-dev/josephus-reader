@@ -13,9 +13,16 @@ export interface ActiveFormHighlight {
   hue: number;          // HSL hue angle matching associated lemma or standalone
 }
 
+export interface ActivePhraseHighlight {
+  phrase: string;        // Normalized phrase key (e.g. "ιουδαιων αρχοντες")
+  displayPhrase: string; // Original display phrase (e.g. "Ἰουδαίων ἄρχοντες")
+  hue: number;          // HSL hue angle
+}
+
 export interface HighlightStore {
   lemmas: ActiveLemmaHighlight[];
   forms: ActiveFormHighlight[];
+  phrases: ActivePhraseHighlight[];
 }
 
 const STORAGE_KEY = 'josephus_reader_highlights';
@@ -34,19 +41,20 @@ export function normalizeKey(str: string): string {
 
 export function getHighlights(): HighlightStore {
   if (typeof window === 'undefined' || !window.localStorage) {
-    return { lemmas: [], forms: [] };
+    return { lemmas: [], forms: [], phrases: [] };
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { lemmas: [], forms: [] };
+    if (!raw) return { lemmas: [], forms: [], phrases: [] };
     const parsed = JSON.parse(raw);
     return {
       lemmas: Array.isArray(parsed.lemmas) ? parsed.lemmas : [],
-      forms: Array.isArray(parsed.forms) ? parsed.forms : []
+      forms: Array.isArray(parsed.forms) ? parsed.forms : [],
+      phrases: Array.isArray(parsed.phrases) ? parsed.phrases : []
     };
   } catch (err) {
     console.error('Error reading highlights from localStorage:', err);
-    return { lemmas: [], forms: [] };
+    return { lemmas: [], forms: [], phrases: [] };
   }
 }
 
@@ -64,6 +72,7 @@ function getNextHue(store: HighlightStore): number {
   const usedHues = new Set<number>();
   store.lemmas.forEach(l => usedHues.add(l.hue));
   store.forms.forEach(f => usedHues.add(f.hue));
+  store.phrases.forEach(p => usedHues.add(p.hue));
 
   // Find first unused hue from BASE_HUES
   for (const h of BASE_HUES) {
@@ -71,7 +80,7 @@ function getNextHue(store: HighlightStore): number {
   }
 
   // Dynamic expansion using golden ratio algorithm if > 12 hues used
-  const totalCount = store.lemmas.length + store.forms.length;
+  const totalCount = store.lemmas.length + store.forms.length + store.phrases.length;
   return Math.round((totalCount * 137.5) % 360);
 }
 
@@ -213,21 +222,170 @@ export function removeFormHighlight(word: string) {
   saveHighlights(store);
 }
 
+export function isPhraseHighlighted(displayPhrase: string): boolean {
+  const store = getHighlights();
+  const norm = normalizeKey(displayPhrase);
+  return store.phrases.some(p => p.phrase === norm);
+}
+
+export function togglePhraseHighlight(displayPhrase: string): boolean {
+  const store = getHighlights();
+  const norm = normalizeKey(displayPhrase);
+  if (!norm) return false;
+
+  const existingIdx = store.phrases.findIndex(p => p.phrase === norm);
+  if (existingIdx !== -1) {
+    store.phrases.splice(existingIdx, 1);
+    saveHighlights(store);
+    return false;
+  } else {
+    const hue = getNextHue(store);
+    store.phrases.push({
+      phrase: norm,
+      displayPhrase: displayPhrase.trim(),
+      hue
+    });
+    saveHighlights(store);
+    return true;
+  }
+}
+
+export function removePhraseHighlight(displayPhrase: string) {
+  const store = getHighlights();
+  const norm = normalizeKey(displayPhrase);
+  store.phrases = store.phrases.filter(p => p.phrase !== norm);
+  saveHighlights(store);
+}
+
 export function clearAllHighlights() {
   for (const k in _lemmaFormSets) delete _lemmaFormSets[k];
-  saveHighlights({ lemmas: [], forms: [] });
+  saveHighlights({ lemmas: [], forms: [], phrases: [] });
 }
 
 export interface WordHighlightResult {
   isForm: boolean;
   isLemma: boolean;
+  isPhrase?: boolean;
   hue?: number;
   style?: string;
 }
 
+/**
+ * Normalizes Greek lemma accents so no lemma ends with or contains grave accents (\u0300 -> \u0301).
+ * e.g., παρὰ -> παρά, καὶ -> καί, διὰ -> διά
+ */
+export function normalizeLemmaAccents(str: string): string {
+  if (!str) return '';
+  return str.normalize('NFD').replace(/\u0300/g, '\u0301').normalize('NFC');
+}
+
+/**
+ * Canonicalizes a Greek word form for display and grouping in Attested Forms grids.
+ * - Lowercases capital letters with accents/breathings (e.g., Ἔμελλε -> ἔμελλε)
+ * - Normalizes grave accents to acute accents (\u0300 -> \u0301)
+ * - Groups movable nu (ἐφελκυστικὸν ν) into a single canonical representation, e.g. ἔμελλε(ν)
+ */
+export function getCanonicalForm(rawWord: string): string {
+  if (!rawWord) return '';
+
+  let w = rawWord.replace(/[.,·;:!?"'»«()\[\]]/g, '').trim();
+  if (!w) return '';
+
+  w = w.toLowerCase();
+  w = w.normalize('NFD').replace(/\u0300/g, '\u0301');
+
+  // Strip secondary enclitic accent on final syllable if an earlier accent exists
+  const accentMatches = w.match(/\u0301/g) || [];
+  if (accentMatches.length > 1) {
+    const lastIdx = w.lastIndexOf('\u0301');
+    if (lastIdx !== -1) {
+      w = w.slice(0, lastIdx) + w.slice(lastIdx + 1);
+    }
+  }
+
+  w = w.normalize('NFC');
+
+  if (w.endsWith('ν')) {
+    const stem = w.slice(0, -1);
+    const normStem = stem.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (/[ε|σι|τι|ει]$/.test(normStem)) {
+      return `${stem}(ν)`;
+    }
+  } else {
+    const normW = w.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (/[ε|σι|τι|ει]$/.test(normW)) {
+      return `${w}(ν)`;
+    }
+  }
+
+  return w;
+}
+
+/**
+ * Given a list of occurrences, produces a deduplicated, sorted list of canonical attested form strings.
+ * e.g., ["ἔμελλε", "Ἔμελλε", "ἔμελλεν", "Ἔμελλεν"] => ["ἔμελλε(ν)"]
+ */
+export function getCanonicalAttestedForms(occurrences: Array<{ word?: string }>): string[] {
+  if (!occurrences || !Array.isArray(occurrences)) return [];
+
+  const canonicalMap = new Map<string, string>();
+
+  for (const o of occurrences) {
+    if (!o || !o.word) continue;
+    const raw = o.word.trim();
+    if (!raw) continue;
+    const canonical = getCanonicalForm(raw);
+    if (!canonicalMap.has(canonical)) {
+      canonicalMap.set(canonical, canonical);
+    }
+  }
+
+  return Array.from(canonicalMap.values()).sort((a, b) => a.localeCompare(b, 'el'));
+}
+
+/**
+ * Checks whether an occurrence word form matches a selected form filter (canonicalized).
+ */
+export function isFormFilterMatch(occWord: string, filterWord: string): boolean {
+  if (!filterWord || !occWord) return true;
+  if (occWord === filterWord) return true;
+
+  const canonicalOcc = getCanonicalForm(occWord);
+  const canonicalFilter = getCanonicalForm(filterWord);
+  if (canonicalOcc === canonicalFilter) return true;
+
+  const normOcc = normalizeKey(occWord);
+  const normFilter = normalizeKey(filterWord);
+  const stripNu = (s: string) => (s.endsWith('ν') ? s.slice(0, -1) : s);
+
+  return normOcc === normFilter || stripNu(normOcc) === stripNu(normFilter);
+}
+
+export function matchSingleWord(normWord: string, normTarget: string): boolean {
+  if (!normWord || !normTarget) return false;
+  if (normWord === normTarget) return true;
+
+  // Account for Greek movable nu (ἐφελκυστικὸν ν) at word end (e.g. μελλει / μελλειν, εστι / εστιν)
+  const stripNu = (s: string) => (s.endsWith('ν') ? s.slice(0, -1) : s);
+  if (stripNu(normWord) === stripNu(normTarget)) return true;
+
+  return false;
+}
+
+export function isWordPhraseMatch(normWord: string, normPhrase: string): boolean {
+  if (!normWord || !normPhrase) return false;
+
+  if (normPhrase.includes(' ')) {
+    const phraseWords = normPhrase.split(/\s+/).filter(Boolean);
+    return phraseWords.some(w => matchSingleWord(normWord, w));
+  }
+
+  return matchSingleWord(normWord, normPhrase);
+}
+
 export function getWordHighlightInfo(rawWord: string, store: HighlightStore): WordHighlightResult {
   const norm = normalizeKey(rawWord);
-  if (!norm) return { isForm: false, isLemma: false };
+  if (!norm) return { isForm: false, isLemma: false, isPhrase: false };
 
   // 1. Check exact form match first (takes precedence for vibrant styling)
   const formMatch = store.forms.find(f => f.word === norm);
@@ -235,12 +393,13 @@ export function getWordHighlightInfo(rawWord: string, store: HighlightStore): Wo
     return {
       isForm: true,
       isLemma: false,
+      isPhrase: false,
       hue: formMatch.hue,
       style: `--hl-hue: ${formMatch.hue};`
     };
   }
 
-  // 2. Check lemma match using loaded form sets (Idea A) with prefix fallback
+  // 2. Check lemma match using loaded form sets with prefix fallback
   const lemmaMatch = store.lemmas.find(l => {
     const formsSet = getLoadedLemmaFormSet(l.lemma);
     if (formsSet) {
@@ -253,10 +412,29 @@ export function getWordHighlightInfo(rawWord: string, store: HighlightStore): Wo
     return {
       isForm: false,
       isLemma: true,
+      isPhrase: false,
       hue: lemmaMatch.hue,
       style: `--hl-hue: ${lemmaMatch.hue};`
     };
   }
 
-  return { isForm: false, isLemma: false };
+  // 3. Check custom phrase match
+  if (store.phrases && store.phrases.length > 0) {
+    const phraseMatch = store.phrases.find(p => {
+      const pNorm = normalizeKey(p.phrase || p.displayPhrase);
+      return isWordPhraseMatch(norm, pNorm);
+    });
+
+    if (phraseMatch) {
+      return {
+        isForm: false,
+        isLemma: false,
+        isPhrase: true,
+        hue: phraseMatch.hue,
+        style: `--hl-hue: ${phraseMatch.hue};`
+      };
+    }
+  }
+
+  return { isForm: false, isLemma: false, isPhrase: false };
 }

@@ -39,11 +39,16 @@ const _dictShardCache: Record<string, Promise<Record<string, LsjEntry>>> = {};
 let _lemmataCache: Promise<Record<string, LemmaRef>> | null = null;
 
 export function getBase(): string {
+  if (typeof window !== 'undefined') {
+    if ((window as any).__BASE_PATH__ !== undefined) {
+      return (window as any).__BASE_PATH__.replace(/\/$/, '');
+    }
+    if (window.location && window.location.pathname.startsWith('/josephus-reader')) {
+      return '/josephus-reader';
+    }
+  }
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) {
     return import.meta.env.BASE_URL.replace(/\/$/, '');
-  }
-  if (typeof window !== 'undefined' && (window as any).__BASE_PATH__) {
-    return (window as any).__BASE_PATH__;
   }
   return '';
 }
@@ -103,9 +108,59 @@ export function fetchDictionary(): Promise<Record<string, LsjEntry>> {
   return fetch(url).then(r => (r.ok ? r.json() : {})).catch(() => ({}));
 }
 
-export function fetchLemmataIndex(): Promise<Record<string, LemmaRef>> {
-  if (_lemmataCache) return _lemmataCache;
-  const url = `${getBase()}/data/lemmata/_index.json`;
-  _lemmataCache = fetch(url).then(r => (r.ok ? r.json() : {})).catch(() => ({}));
-  return _lemmataCache;
+export interface LemmaOccurrence {
+  work: string;
+  book: number;
+  sec: string;
+  word: string;
 }
+
+export interface LemmaEntryData {
+  lemma: string;
+  count: number;
+  occurrences: LemmaOccurrence[];
+}
+
+const _lemmaShardCache: Record<string, Promise<Record<string, LemmaEntryData>>> = {};
+
+function normalizeKey(str: string): string {
+  if (!str) return '';
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/ς/g, 'σ');
+}
+
+export function fetchLemmaData(lemmaNorm: string): Promise<LemmaEntryData | null> {
+  const bucket = getGreekBucket(lemmaNorm);
+  if (!_lemmaShardCache[bucket]) {
+    const url = `${getBase()}/data/lemmata/${bucket}.json`;
+    _lemmaShardCache[bucket] = fetch(url)
+      .then(r => (r.ok ? r.json() : {}))
+      .catch(() => ({}));
+  }
+  return _lemmaShardCache[bucket].then(shardData => {
+    if (!shardData) return null;
+    const keyNorm = normalizeKey(lemmaNorm);
+    const match = shardData[lemmaNorm] || shardData[keyNorm] || Object.values(shardData).find((e: any) => normalizeKey(e.lemma) === keyNorm);
+    return match || null;
+  });
+}
+
+export interface SearchSectionItem {
+  w: string;
+  b: number;
+  s: string;
+  g: string;
+  n: string;
+  e: string;
+}
+
+let _searchIndexCache: Promise<SearchSectionItem[]> | null = null;
+
+export function fetchSearchIndex(): Promise<SearchSectionItem[]> {
+  if (_searchIndexCache) return _searchIndexCache;
+  const url = `${getBase()}/data/search_index.json`;
+  _searchIndexCache = fetch(url)
+    .then(r => (r.ok ? r.json() : []))
+    .catch(() => []);
+  return _searchIndexCache;
+}
+

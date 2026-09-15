@@ -103,7 +103,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
           // Find key matching wordKey (exact or stripped)
           const normKey = wordKey.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/ς/g, 'σ');
-          const entry = data[wordKey] || data[normKey] || Object.values(data).find(e => e.lemma === wordKey);
+          const entry = data[wordKey] || data[normKey] || Object.values(data).find(e => e.lemma === wordKey || (e.lemma && e.lemma.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/ς/g, 'σ') === normKey));
+
 
           document.getElementById('loading-state').style.display = 'none';
 

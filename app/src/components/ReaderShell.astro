@@ -30,6 +30,9 @@ if (existsSync(jsonPath)) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{work.englishTitle} — {label} | Josephus Reader</title>
+  <script is:inline define:vars={{ base }}>
+    window.__BASE_PATH__ = base || '';
+  </script>
   <ThemeInit />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -169,11 +172,14 @@ if (existsSync(jsonPath)) {
           <div class="mobile-control-item">
             <span class="control-label">Word Tools</span>
             <div class="mobile-lookup-btns">
-              <button type="button" class="mobile-morph-toggle" id="mobile-morph-toggle">
-                Morph
+              <button type="button" class="mobile-morph-toggle" id="mobile-morph-toggle" title="Word Info (W)">
+                W (Word Info)
               </button>
-              <button type="button" class="mobile-highlights-btn" id="mobile-highlights-btn">
-                Highlights<span class="mobile-hl-badge" id="mobile-hl-badge" hidden>0</span>
+              <button type="button" class="mobile-search-btn" id="mobile-search-btn" title="Corpus Search (S)">
+                S (Search)
+              </button>
+              <button type="button" class="mobile-highlights-btn" id="mobile-highlights-btn" title="Highlights (H)">
+                H (Highlights)<span class="mobile-hl-badge" id="mobile-hl-badge" hidden>0</span>
               </button>
             </div>
           </div>
@@ -274,7 +280,19 @@ if (existsSync(jsonPath)) {
             <td>Jump to last section</td>
           </tr>
           <tr>
+            <td><kbd>W</kbd></td>
+            <td>Toggle Word Info mode (interactive word popups)</td>
+          </tr>
+          <tr>
             <td><kbd>S</kbd></td>
+            <td>Open Corpus Search</td>
+          </tr>
+          <tr>
+            <td><kbd>H</kbd></td>
+            <td>Open Active Highlights Tab</td>
+          </tr>
+          <tr>
+            <td><kbd>O</kbd></td>
             <td>Switch/scroll between Greek & English in section</td>
           </tr>
           <tr>
@@ -292,10 +310,6 @@ if (existsSync(jsonPath)) {
           <tr>
             <td><kbd>Z</kbd></td>
             <td>Toggle Zen Mode (full-screen focus view)</td>
-          </tr>
-          <tr>
-            <td><kbd>M</kbd></td>
-            <td>Toggle Morph mode (interactive word popups)</td>
           </tr>
           <tr>
             <td><kbd>+</kbd> / <kbd>=</kbd></td>
@@ -562,7 +576,7 @@ if (existsSync(jsonPath)) {
           e.preventDefault();
           window.dispatchEvent(new CustomEvent('reader-nav-last'));
           break;
-        case 's':
+        case 'o':
           e.preventDefault();
           window.dispatchEvent(new CustomEvent('reader-nav-lang-switch'));
           break;
@@ -578,9 +592,17 @@ if (existsSync(jsonPath)) {
           e.preventDefault();
           window.dispatchEvent(new CustomEvent('reader-set-viewmode', { detail: 'english' }));
           break;
-        case 'm':
+        case 'w':
           e.preventDefault();
           window.dispatchEvent(new CustomEvent('reader-toggle-morph'));
+          break;
+        case 's':
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('reader-toggle-search', { detail: { tab: 'lemma' } }));
+          break;
+        case 'h':
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('reader-toggle-search', { detail: { tab: 'highlights' } }));
           break;
         case 'z':
           e.preventDefault();

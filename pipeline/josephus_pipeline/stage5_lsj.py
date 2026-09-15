@@ -195,6 +195,12 @@ def parse_lsj_entry(key: str, body_str: str, entries_db: dict[str, str] | None =
     return clean_def, short_gloss, pos
 
 
+def normalize_lemma_accents(text: str) -> str:
+    if not text:
+        return ""
+    return unicodedata.normalize("NFC", unicodedata.normalize("NFD", text).replace("\u0300", "\u0301"))
+
+
 def run_stage5(manifest: Manifest) -> dict:
     work_id = manifest.work_id
     stage4_file = BUILD_DIR / "stage4" / work_id / "morph_map.json"
@@ -231,6 +237,7 @@ def run_stage5(manifest: Manifest) -> dict:
                 greek_key = betacode.beta_to_uni(raw_key)
             except Exception:
                 greek_key = raw_key
+            greek_key = normalize_lemma_accents(greek_key)
             norm_key = strip_accents(greek_key)
 
             if norm_key in lemmata_set and norm_key not in dict_map:

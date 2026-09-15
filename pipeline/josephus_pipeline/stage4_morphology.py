@@ -247,6 +247,34 @@ def derive_parse_tag(word: str) -> tuple[str, str, str]:
     return ("", "Form", "Greek word form")
 
 
+COMMON_LEMMA_OVERRIDES = {
+    "και": "καί", "καὶ": "καί", "καί": "καί",
+    "δε": "δέ", "δὲ": "δέ", "δέ": "δέ",
+    "τε": "τέ", "τὲ": "τέ", "τέ": "τέ",
+    "ει": "εἰ", "εἰ": "εἰ", "εἴ": "εἰ",
+    "εν": "ἐν", "ἐν": "ἐν",
+    "εισ": "εἰς", "εἰς": "εἰς", "εσ": "εἰς",
+    "εκ": "ἐκ", "ἐκ": "ἐκ", "εξ": "ἐκ", "ἐξ": "ἐκ",
+    "προσ": "πρός", "πρὸς": "πρός", "πρός": "πρός",
+    "απο": "ἀπό", "ἀπὸ": "ἀπό", "ἀπό": "ἀπό",
+    "υπο": "ὑπό", "ὑπὸ": "ὑπό", "ὑπό": "ὑπό",
+    "δια": "διά", "διὰ": "διά", "διά": "διά",
+    "μετα": "μετά", "μετὰ": "μετά", "μετά": "μετά",
+    "κατα": "κατά", "κατὰ": "κατά", "κατά": "κατά",
+    "επι": "ἐπί", "ἐπὶ": "ἐπί", "ἐπί": "ἐπί",
+    "περι": "περί", "περὶ": "περί", "περί": "περί",
+    "παρα": "παρά", "παρὰ": "παρά", "παρά": "παρά",
+    "ο": "ὁ", "η": "ἡ", "το": "ὁ", "του": "ὁ", "τησ": "ὁ", "τω": "ὁ", "τη": "ὁ", "τον": "ὁ", "την": "ὁ",
+    "οι": "ὁ", "αι": "ὁ", "τα": "ὁ", "των": "ὁ", "τοισ": "ὁ", "ταισ": "ὁ", "τουσ": "ὁ", "τασ": "ὁ"
+}
+
+
+def normalize_lemma_accents(text: str) -> str:
+    if not text:
+        return ""
+    return unicodedata.normalize("NFC", unicodedata.normalize("NFD", text).replace("\u0300", "\u0301"))
+
+
 def run_stage4(manifest: Manifest) -> dict:
     work_id = manifest.work_id
     stage3_file = BUILD_DIR / "stage3" / work_id / "tokens.json"
@@ -261,12 +289,23 @@ def run_stage4(manifest: Manifest) -> dict:
     print(f"[Stage 4] Performing morphological analysis for {work_id} ({len(tokens):,} unique words)...")
 
     cltk_dict = load_cltk_lemmatizer()
-    norm_cltk = {strip_accents(k): v for k, v in cltk_dict.items()}
+    norm_cltk = {}
+    for k, v in cltk_dict.items():
+        norm_k = strip_accents(k)
+        if norm_k not in norm_cltk or k == v:
+            norm_cltk[norm_k] = v
 
     morph_map = {}
     for word in tokens:
         norm = strip_accents(word)
-        lemma = cltk_dict.get(word) or norm_cltk.get(norm) or word
+        lemma = (
+            COMMON_LEMMA_OVERRIDES.get(word)
+            or COMMON_LEMMA_OVERRIDES.get(norm)
+            or cltk_dict.get(word)
+            or norm_cltk.get(norm)
+            or word
+        )
+        lemma = normalize_lemma_accents(lemma)
         pos, parse_tag, parse_desc = derive_parse_tag(word)
         entry = {
             "lemma": lemma,

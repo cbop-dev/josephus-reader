@@ -1,7 +1,7 @@
 {
   "name": "josephus-reader",
   "private": true,
-  "version": "0.1.20",
+  "version": "0.1.21",
   "repository": "https://github.com/cbop-dev/josephus-reader",
   "type": "module",
   "scripts": {
@@ -15,6 +15,7 @@
     "preview": "npm --prefix app run preview",
     "preview:www": "npm --prefix app run preview:www",
     "preview:vps": "npm --prefix app run preview:www",
+    "test": "npx -y tsx --test tests/*.test.ts",
     "check": "npm --prefix app run astro check",
     "pipeline": "python3 -m pipeline.josephus_pipeline all",
     "deploy:www": "./scripts/deploy_www.sh",

@@ -4,8 +4,15 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from pathlib import Path
 from .config import BUILD_DIR, REPO_ROOT
+
+
+def normalize_lemma_accents(text: str) -> str:
+    if not text:
+        return ""
+    return unicodedata.normalize("NFC", unicodedata.normalize("NFD", text).replace("\u0300", "\u0301"))
 
 
 def sanitize_slug(slug: str) -> str:
@@ -32,7 +39,7 @@ def run_stage8():
                         clean_key = sanitize_slug(raw_lemma)
                         if clean_key not in all_concordance:
                             all_concordance[clean_key] = {
-                                "lemma": entry.get("lemma", clean_key),
+                                "lemma": normalize_lemma_accents(entry.get("lemma", clean_key)),
                                 "occurrences": []
                             }
                         all_concordance[clean_key]["occurrences"].extend(entry.get("occurrences", []))
@@ -49,7 +56,7 @@ def run_stage8():
         summary_index = {}
         for k, v in all_concordance.items():
             summary_index[k] = {
-                "lemma": v["lemma"],
+                "lemma": normalize_lemma_accents(v["lemma"]),
                 "count": len(v["occurrences"])
             }
 

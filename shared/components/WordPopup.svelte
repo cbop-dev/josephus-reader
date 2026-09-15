@@ -1,16 +1,27 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { fetchMorphForWord, fetchDictionaryForWord, getBase, type MorphEntry, type LsjEntry } from '../lib/data';
+  import {
+    fetchMorphForWord,
+    fetchDictionaryForWord,
+    fetchLemmaData,
+    getBase,
+    type MorphEntry,
+    type LsjEntry,
+    type LemmaEntryData
+  } from '../lib/data';
   import {
     getHighlights,
     toggleLemmaHighlight,
     toggleFormHighlight,
     clearAllHighlights,
-    isLemmaHighlighted,
-    isFormHighlighted,
     normalizeKey,
+    normalizeLemmaAccents,
+    getCanonicalAttestedForms,
+    isFormFilterMatch,
     type HighlightStore
   } from '../lib/highlights';
+  import AttestedFormsGrid from './AttestedFormsGrid.svelte';
+  import OccurrenceTree from './OccurrenceTree.svelte';
 
   let {
     word = '',
@@ -20,26 +31,36 @@
     onClose?: () => void;
   } = $props();
 
+  let activeTab = $state<'lemma' | 'instances'>('lemma');
   let isMaximized = $state(false);
   let info = $state<MorphEntry | null>(null);
   let dictEntry = $state<LsjEntry | null>(null);
   let loading = $state(true);
   let currentWord = $state('');
-  let highlightsStore = $state<HighlightStore>({ lemmas: [], forms: [] });
-  const base = getBase();
+
+  let lemmaData = $state<LemmaEntryData | null>(null);
+  let loadingLemmaData = $state(false);
+  let selectedFormFilter = $state<string | null>(null);
+
+  let highlightsStore = $state<HighlightStore>({ lemmas: [], forms: [], phrases: [] });
 
   function refreshHighlights() {
     highlightsStore = getHighlights();
   }
 
   let currentLemmaNorm = $derived(normalizeKey(info?.lemma_norm || info?.lemma || word));
-  let currentLemmaDisplay = $derived(info?.lemma || word);
+  let currentLemmaDisplay = $derived(normalizeLemmaAccents(info?.lemma || word));
 
   let activeLemmaObj = $derived(highlightsStore.lemmas.find(l => l.lemma === currentLemmaNorm));
   let activeFormObj = $derived(highlightsStore.forms.find(f => f.word === normalizeKey(word)));
   let lemmaIsActive = $derived(!!activeLemmaObj);
   let formIsActive = $derived(!!activeFormObj);
   let hasAnyHighlights = $derived(highlightsStore.lemmas.length > 0 || highlightsStore.forms.length > 0);
+
+  let attestedForms = $derived.by(() => {
+    if (!lemmaData || !Array.isArray(lemmaData.occurrences)) return [];
+    return getCanonicalAttestedForms(lemmaData.occurrences);
+  });
 
   function handleToggleLemma() {
     toggleLemmaHighlight(currentLemmaDisplay, currentLemmaNorm);
@@ -58,6 +79,21 @@
 
   function toggleMaximize() {
     isMaximized = !isMaximized;
+  }
+
+  function toggleFormFilter(fWord: string) {
+    if (selectedFormFilter === fWord) {
+      selectedFormFilter = null;
+    } else {
+      selectedFormFilter = fWord;
+    }
+  }
+
+  function switchToCorpusInstances() {
+    activeTab = 'instances';
+    if (!lemmaData && currentLemmaNorm) {
+      loadLemmaData(currentLemmaNorm);
+    }
   }
 
   onMount(() => {
@@ -106,15 +142,31 @@
     return map[clean] || map[nfc] || map[lower] || map[stripped] || map[key] || null;
   }
 
+  async function loadLemmaData(lemmaNorm: string) {
+    if (!lemmaNorm) return;
+    loadingLemmaData = true;
+    try {
+      const data = await fetchLemmaData(lemmaNorm);
+      lemmaData = data;
+    } catch (err) {
+      console.error('Failed to load lemma occurrences:', err);
+    } finally {
+      loadingLemmaData = false;
+    }
+  }
+
   async function fetchInfo(w: string) {
     loading = true;
     info = null;
     dictEntry = null;
+    lemmaData = null;
+    selectedFormFilter = null;
     try {
       const [morphMap, dictMap] = await Promise.all([fetchMorphForWord(w), fetchDictionaryForWord(w)]);
       info = findMorph(morphMap, w);
       const lemmaKey = info?.lemma_norm || info?.lemma || w.toLowerCase();
       dictEntry = findDict(dictMap, lemmaKey);
+      loadLemmaData(lemmaKey);
     } catch (err) {
       console.error('Error fetching word info:', err);
     } finally {
@@ -124,6 +176,10 @@
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') onClose();
+  }
+
+  function handleNavigate(work: string, book: number, sec: string) {
+    onClose();
   }
 </script>
 
@@ -157,10 +213,38 @@
       </div>
     </div>
 
+    <!-- Tab navigation bar -->
+    <div class="popup-tabs-strip" role="tablist" aria-label="Word Information Views">
+      <button
+        role="tab"
+        aria-selected={activeTab === 'lemma'}
+        class="popup-tab-btn"
+        class:active={activeTab === 'lemma'}
+        onclick={() => (activeTab = 'lemma')}
+      >
+        <span class="tab-icon">🏛️</span>
+        <span class="tab-label">Lemma</span>
+      </button>
+      <button
+        role="tab"
+        aria-selected={activeTab === 'instances'}
+        class="popup-tab-btn"
+        class:active={activeTab === 'instances'}
+        onclick={switchToCorpusInstances}
+      >
+        <span class="tab-icon">📊</span>
+        <span class="tab-label">Corpus Instances</span>
+        {#if lemmaData?.occurrences?.length}
+          <span class="tab-badge">{lemmaData.occurrences.length}</span>
+        {/if}
+      </button>
+    </div>
+
     <div class="word-popup-body">
       {#if loading}
         <div class="popup-status">Analyzing word form...</div>
-      {:else}
+      {:else if activeTab === 'lemma'}
+        <!-- Lemma General Info Tab -->
         {#if info}
           <div class="morph-section">
             <div class="lemma-line">
@@ -220,11 +304,30 @@
           </details>
         {/if}
 
-        {#if info?.lemma_norm}
-          <a class="concordance-link" href={`${base}/lemma/?w=${encodeURIComponent(info.lemma_norm)}`}>
-            See occurrences across Josephus →
-          </a>
+        {#if currentLemmaNorm || currentLemmaDisplay}
+          <button class="concordance-link" onclick={switchToCorpusInstances}>
+            See occurrences across Josephus ({lemmaData?.occurrences?.length || 0}) →
+          </button>
         {/if}
+      {:else}
+        <!-- Corpus Instances Tab -->
+        <AttestedFormsGrid
+          attestedForms={attestedForms}
+          selectedFormFilter={selectedFormFilter}
+          lemmaNorm={currentLemmaNorm}
+          lemmaDisplay={currentLemmaDisplay}
+          onToggleFilter={toggleFormFilter}
+          loading={loadingLemmaData}
+        />
+
+        <OccurrenceTree
+          lemmaDisplay={currentLemmaDisplay}
+          lemmaData={lemmaData}
+          selectedFormFilter={selectedFormFilter}
+          onClearFormFilter={() => (selectedFormFilter = null)}
+          onNavigate={handleNavigate}
+          loading={loadingLemmaData}
+        />
       {/if}
     </div>
   </div>
@@ -257,8 +360,8 @@
     border: 1px solid var(--border, #d4d8d3);
     border-radius: 12px 12px 0 0;
     width: 92%;
-    max-width: 540px;
-    max-height: 80vh;
+    max-width: 580px;
+    max-height: 82vh;
     display: flex;
     flex-direction: column;
     padding: 1.25rem;
@@ -274,16 +377,12 @@
   }
 
   .word-popup-card.maximized .word-popup-body {
-    max-height: calc(90vh - 4.5rem) !important;
-  }
-
-  .word-popup-card.maximized .dict-def {
-    max-height: calc(90vh - 12rem) !important;
+    max-height: calc(90vh - 6.5rem) !important;
   }
 
   .word-popup-body {
     overflow-y: auto;
-    max-height: calc(80vh - 4.5rem);
+    max-height: calc(82vh - 6.5rem);
     padding-right: 0.25rem;
   }
 
@@ -299,7 +398,7 @@
     justify-content: space-between;
     border-bottom: 1px solid var(--border, #d4d8d3);
     padding-bottom: 0.6rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.6rem;
     gap: 0.75rem;
   }
 
@@ -356,6 +455,82 @@
     font-size: 1.15rem;
   }
 
+  :global(.popup-tabs-strip) {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: var(--page-bg, #eceee7);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--border, #d4d8d3);
+    margin-bottom: 0.85rem;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  :global(.popup-tab-btn) {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.86rem;
+    font-weight: 600;
+    font-family: var(--font-ui, system-ui, sans-serif);
+    color: var(--text-mid, #545b5c);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    user-select: none;
+    box-sizing: border-box;
+    line-height: 1.2;
+  }
+
+  :global(.popup-tab-btn .tab-icon) {
+    font-size: 0.95rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  :global(.popup-tab-btn .tab-label) {
+    letter-spacing: 0.01em;
+  }
+
+  :global(.popup-tab-btn .tab-badge) {
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--text-mid, #545b5c);
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.45rem;
+    border-radius: 10px;
+    transition: all 0.18s ease;
+    line-height: 1.2;
+  }
+
+  :global(.popup-tab-btn:hover:not(.active)) {
+    color: var(--text, #171a1c);
+    background: rgba(255, 255, 255, 0.75);
+    border-color: var(--border, #d4d8d3);
+  }
+
+  :global(.popup-tab-btn.active) {
+    background: var(--accent, #1f6f7a) !important;
+    color: #ffffff !important;
+    border-color: var(--accent, #1f6f7a) !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 6px rgba(31, 111, 122, 0.35) !important;
+  }
+
+  :global(.popup-tab-btn.active .tab-badge) {
+    background: rgba(255, 255, 255, 0.25) !important;
+    color: #ffffff !important;
+  }
+
   .morph-section {
     display: flex;
     flex-direction: column;
@@ -400,32 +575,10 @@
     margin-left: 0.4rem;
   }
 
-  .label {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--text-mid, #545b5c);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    min-width: 3.5rem;
-  }
-
-  .lemma-value {
-    font-family: var(--font-greek, serif);
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--accent, #1f6f7a);
-  }
-
   .gloss-value {
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--text, #171a1c);
-  }
-
-  .parse-line {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
   }
 
   .parse-tag {
@@ -438,11 +591,6 @@
     font-weight: 600;
     color: var(--accent, #1f6f7a);
     cursor: help;
-  }
-
-  .parse-desc {
-    font-size: 0.88rem;
-    color: var(--text-mid, #545b5c);
   }
 
   .dict-details {
@@ -481,10 +629,21 @@
   .concordance-link {
     display: inline-block;
     margin-top: 1rem;
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     font-weight: 600;
     color: var(--accent, #1f6f7a);
     text-decoration: underline;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    transition: opacity 0.15s ease;
+  }
+
+  .concordance-link:hover {
+    opacity: 0.82;
   }
 
   .popup-status {

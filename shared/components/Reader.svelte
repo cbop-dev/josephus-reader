@@ -4,6 +4,7 @@
   import SectionNavPill from "./SectionNavPill.svelte";
   import CitationModal from "./CitationModal.svelte";
   import BookmarksModal from "./BookmarksModal.svelte";
+  import SearchModal from "./SearchModal.svelte";
   import { fetchBook, type BookData, type Section } from "../lib/data";
   import { getWork } from "../lib/works";
   import { formatSourceReference } from "../lib/citation";
@@ -19,6 +20,7 @@
     preloadActiveLemmaFormSets,
     removeLemmaHighlight,
     removeFormHighlight,
+    removePhraseHighlight,
     clearAllHighlights,
     type HighlightStore,
   } from "../lib/highlights";
@@ -44,17 +46,22 @@
   let highlightsStore = $state<HighlightStore>({ lemmas: [], forms: [] });
   let showHighlightsModal = $state(false);
 
-  // New Features State
   let isZenMode = $state(false);
   let zenExpanded = $state(false);
   let showBookmarksModal = $state(false);
+  let showSearchModal = $state(false);
+  let searchModalTab = $state<"lemma" | "custom" | "highlights">("lemma");
+  let searchInitialLemmaNorm = $state("");
+  let searchInitialLemmaDisplay = $state("");
   let citationSecNum = $state<string | null>(null);
   let bookmarksList = $state<BookmarkItem[]>([]);
   let copiedBlockId = $state<string | null>(null);
 
   let workMeta = $derived(getWork(work));
   let totalActiveHighlights = $derived(
-    highlightsStore.lemmas.length + highlightsStore.forms.length,
+    highlightsStore.lemmas.length +
+      highlightsStore.forms.length +
+      (highlightsStore.phrases?.length || 0),
   );
   let totalBookmarks = $derived(bookmarksList.length);
 
@@ -123,6 +130,9 @@
     }
     if (hlInfo.isLemma) {
       return { className: "word-hl-lemma", style: hlInfo.style || "" };
+    }
+    if (hlInfo.isPhrase) {
+      return { className: "word-hl-phrase", style: hlInfo.style || "" };
     }
 
     if (targetWord || targetLemma) {
@@ -227,7 +237,17 @@
       refreshBookmarks();
     };
     const handleToggleHighlightsModal = () => {
-      showHighlightsModal = !showHighlightsModal;
+      searchModalTab = "highlights";
+      showSearchModal = true;
+    };
+    const handleToggleSearchModal = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail) {
+        if (detail.tab) searchModalTab = detail.tab;
+        searchInitialLemmaNorm = detail.lemmaNorm || "";
+        searchInitialLemmaDisplay = detail.lemmaDisplay || "";
+      }
+      showSearchModal = true;
     };
 
     window.addEventListener("reader-set-viewmode", handleSetViewMode);
@@ -243,7 +263,9 @@
       "reader-toggle-highlights",
       handleToggleHighlightsModal,
     );
+    window.addEventListener("reader-toggle-search", handleToggleSearchModal);
     window.addEventListener("keydown", handleKeydown);
+    window.addEventListener("hashchange", scrollToHash);
 
     return () => {
       window.removeEventListener("reader-set-viewmode", handleSetViewMode);
@@ -262,7 +284,12 @@
         "reader-toggle-highlights",
         handleToggleHighlightsModal,
       );
+      window.removeEventListener(
+        "reader-toggle-search",
+        handleToggleSearchModal,
+      );
       window.removeEventListener("keydown", handleKeydown);
+      window.removeEventListener("hashchange", scrollToHash);
     };
   });
 
@@ -462,21 +489,36 @@
             class="ctrl-btn morph-toggle"
             class:active={morphEnabled}
             onclick={() => (morphEnabled = !morphEnabled)}
-            title="Toggle word lookup popups"
+            title="Toggle Word Info lookup popups [W]"
           >
-            Morph
+            W
+          </button>
+
+          <button
+            class="ctrl-btn search-toggle-btn"
+            class:active={showSearchModal && searchModalTab !== "highlights"}
+            onclick={(e) => {
+              e.stopPropagation();
+              searchModalTab = "lemma";
+              showSearchModal = true;
+            }}
+            title="Open Corpus Search [S]"
+          >
+            S
           </button>
 
           <button
             class="ctrl-btn hl-modal-toggle"
             class:has-highlights={totalActiveHighlights > 0}
+            class:active={showSearchModal && searchModalTab === "highlights"}
             onclick={(e) => {
               e.stopPropagation();
-              showHighlightsModal = !showHighlightsModal;
+              searchModalTab = "highlights";
+              showSearchModal = true;
             }}
-            title="Manage active word & lemma highlights"
+            title="Open Active Highlights [H]"
           >
-            Highlights{#if totalActiveHighlights > 0}
+            H{#if totalActiveHighlights > 0}
               <span class="hl-badge">{totalActiveHighlights}</span>{/if}
           </button>
         </div>
@@ -592,18 +634,32 @@
             class="ctrl-btn morph-toggle"
             class:active={morphEnabled}
             onclick={() => (morphEnabled = !morphEnabled)}
-            title="Toggle word lookup popups"
+            title="Toggle Word Info lookup popups (W)"
           >
-            Morph
+            W
+          </button>
+
+          <button
+            class="ctrl-btn search-toggle-btn"
+            onclick={() => {
+              searchModalTab = "lemma";
+              showSearchModal = true;
+            }}
+            title="Open Corpus Search (S)"
+          >
+            S
           </button>
 
           <button
             class="ctrl-btn hl-modal-toggle"
             class:has-highlights={totalActiveHighlights > 0}
-            onclick={() => (showHighlightsModal = !showHighlightsModal)}
-            title="Manage active word & lemma highlights"
+            onclick={() => {
+              searchModalTab = "highlights";
+              showSearchModal = true;
+            }}
+            title="Open Active Highlights (H)"
           >
-            Highlights{#if totalActiveHighlights > 0}
+            H{#if totalActiveHighlights > 0}
               <span class="hl-badge">{totalActiveHighlights}</span>{/if}
           </button>
         </div>
@@ -758,6 +814,17 @@
     <BookmarksModal onClose={() => (showBookmarksModal = false)} />
   {/if}
 
+  {#if showSearchModal}
+    <SearchModal
+      {work}
+      {bookNum}
+      initialTab={searchModalTab}
+      initialLemmaNorm={searchInitialLemmaNorm}
+      initialLemmaDisplay={searchInitialLemmaDisplay}
+      onClose={() => { showSearchModal = false; searchInitialLemmaNorm = ""; searchInitialLemmaDisplay = ""; }}
+    />
+  {/if}
+
   {#if showHighlightsModal}
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -829,6 +896,29 @@
                         class="chip-remove-btn"
                         onclick={() => removeFormHighlight(f.word)}
                         aria-label={`Remove ${f.displayWord} highlight`}
+                        >×</button
+                      >
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+
+            {#if highlightsStore.phrases && highlightsStore.phrases.length > 0}
+              <div class="hl-modal-section">
+                <h3>(3) Custom Phrase Highlights</h3>
+                <div class="hl-chips-grid">
+                  {#each highlightsStore.phrases as p (p.phrase)}
+                    <div
+                      class="hl-chip phrase-chip"
+                      style={`--chip-hue: ${p.hue}`}
+                    >
+                      <span class="chip-color-dot"></span>
+                      <span class="chip-text">{p.displayPhrase}</span>
+                      <button
+                        class="chip-remove-btn"
+                        onclick={() => removePhraseHighlight(p.displayPhrase)}
+                        aria-label={`Remove ${p.displayPhrase} highlight`}
                         >×</button
                       >
                     </div>
@@ -1261,15 +1351,22 @@
   }
 
   .word-hl-form {
-    background-color: hsl(var(--chip-hue, 45), 85%, 82%);
+    background-color: hsl(var(--hl-hue, 45), 85%, 82%);
     color: #171a1c;
     font-weight: 600;
   }
 
   .word-hl-lemma {
-    background-color: hsl(var(--chip-hue, 190), 80%, 85%);
+    background-color: hsl(var(--hl-hue, 190), 80%, 85%);
     color: #171a1c;
-    border-bottom: 2px solid hsl(var(--chip-hue, 190), 70%, 45%);
+    border-bottom: 2px solid hsl(var(--hl-hue, 190), 70%, 45%);
+  }
+
+  .word-hl-phrase {
+    background-color: hsl(var(--hl-hue, 270), 80%, 85%);
+    color: #171a1c;
+    border-bottom: 2px dashed hsl(var(--hl-hue, 270), 70%, 45%);
+    font-weight: 600;
   }
 
   .word-hl-primary {
@@ -1416,6 +1513,11 @@
   .form-chip {
     background-color: hsl(var(--chip-hue, 45), 85%, 90%);
     border-color: hsl(var(--chip-hue, 45), 70%, 75%);
+  }
+
+  .phrase-chip {
+    background-color: hsl(var(--chip-hue, 270), 80%, 92%);
+    border-color: hsl(var(--chip-hue, 270), 60%, 75%);
   }
 
   .chip-color-dot {

@@ -15,6 +15,12 @@ def strip_accents(text: str) -> str:
     return unicodedata.normalize("NFC", text).lower().replace("ς", "σ")
 
 
+def normalize_lemma_accents(text: str) -> str:
+    if not text:
+        return ""
+    return unicodedata.normalize("NFC", unicodedata.normalize("NFD", text).replace("\u0300", "\u0301"))
+
+
 def run_stage6(manifest: Manifest) -> dict:
     work_id = manifest.work_id
     stage1_file = BUILD_DIR / "stage1" / work_id / f"{work_id}.json"
@@ -45,8 +51,9 @@ def run_stage6(manifest: Manifest) -> dict:
 
             for w in words:
                 info = morph_map.get(w, {})
-                lemma = info.get("lemma", w)
-                lemma_norm = info.get("lemma_norm", strip_accents(w))
+                raw_lemma = info.get("lemma", w)
+                lemma = normalize_lemma_accents(raw_lemma)
+                lemma_norm = info.get("lemma_norm") or strip_accents(lemma)
 
                 if lemma_norm not in concordance:
                     concordance[lemma_norm] = {
