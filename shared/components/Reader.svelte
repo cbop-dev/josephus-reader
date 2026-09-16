@@ -35,7 +35,7 @@
   } = $props();
 
   let sections = $state<Section[]>([]);
-  let loading = $state(false);
+  let loading = $state(true);
   let viewMode = $state<"parallel" | "greek" | "english" | "stacked">(
     "parallel",
   );
@@ -391,6 +391,8 @@
       loading = false;
       scrollToHash();
     } else {
+      sections = [];
+      loading = true;
       loadBookData(work, bookNum);
     }
   });
@@ -733,10 +735,13 @@
 
   <main class="reader-content">
     {#if loading}
-      <div class="loading-state">Loading text data...</div>
+      <div class="loading-state">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <span>Loading text data for {workMeta?.englishTitle || work} Book {bookNum}...</span>
+      </div>
     {:else if sections.length === 0}
       <div class="empty-state">
-        No section data available for {work} Book {bookNum}.
+        No section data available for {workMeta?.englishTitle || work} Book {bookNum}.
       </div>
     {:else}
       <div class={`text-grid view-${viewMode}`}>
@@ -1199,11 +1204,36 @@
   .loading-state,
   .empty-state {
     text-align: center;
-    padding: 3rem 1rem;
+    padding: 4rem 1rem;
     color: var(--text-mid, #545b5c);
     background: var(--col-bg, #f5f6f2);
     border: 1px solid var(--border, #d4d8d3);
     border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border, #d4d8d3);
+    border-top-color: var(--accent, #1f6f7a);
+    border-radius: 50%;
+    animation: reader-spin 0.8s linear infinite;
+  }
+
+  @keyframes reader-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .text-grid {
