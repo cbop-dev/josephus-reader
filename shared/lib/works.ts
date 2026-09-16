@@ -45,9 +45,9 @@ export const WORKS: Work[] = [
     englishTitle: "The Jewish War",
     author: HOUSE_AUTHOR,
     tlgAuthor: "0526",
-    tlgWork: "003",
+    tlgWork: "004",
     greekEdition: "B. Niese, Flavii Iosephi Opera (Weidmann, 1895)",
-    booksCount: 2,
+    booksCount: 7,
     translations: [
       { id: "whiston", name: "William Whiston (1856)" }
     ],
@@ -75,7 +75,7 @@ export const WORKS: Work[] = [
     englishTitle: "Against Apion",
     author: HOUSE_AUTHOR,
     tlgAuthor: "0526",
-    tlgWork: "004",
+    tlgWork: "003",
     greekEdition: "B. Niese, Flavii Iosephi Opera (Weidmann, 1889)",
     booksCount: 2,
     translations: [

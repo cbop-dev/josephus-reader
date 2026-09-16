@@ -551,7 +551,7 @@
             }}
             title="Open Corpus Search [S]"
           >
-            S
+            <span class="search-icon">🔍</span>S
           </button>
 
           <button
@@ -565,7 +565,7 @@
             }}
             title="Open Active Highlights [H]"
           >
-            H{#if totalActiveHighlights > 0}
+            <span class="hl-letter">H</span>{#if totalActiveHighlights > 0}
               <span class="hl-badge">{totalActiveHighlights}</span>{/if}
           </button>
         </div>
@@ -699,7 +699,7 @@
             }}
             title="Open Corpus Search (S)"
           >
-            S
+            <span class="search-icon">🔍</span>S
           </button>
 
           <button
@@ -712,7 +712,7 @@
             }}
             title="Open Active Highlights (H)"
           >
-            H{#if totalActiveHighlights > 0}
+            <span class="hl-letter">H</span>{#if totalActiveHighlights > 0}
               <span class="hl-badge">{totalActiveHighlights}</span>{/if}
           </button>
         </div>
@@ -1118,14 +1118,65 @@
     cursor: not-allowed;
   }
 
+  .search-toggle-btn {
+    gap: 0.25rem;
+    padding-left: 0.4rem;
+    padding-right: 0.5rem;
+  }
+
+  .search-icon {
+    font-size: 0.75rem;
+    line-height: 1;
+    opacity: 0.85;
+  }
+
   .hl-modal-toggle {
+    position: relative;
     border-radius: 3px;
+  }
+
+  .hl-letter {
+    position: relative;
+    display: inline-block;
+    padding-bottom: 3px;
+  }
+
+  .hl-letter::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    min-width: 10px;
+    height: 3px;
+    border-radius: 2px;
+    background-color: var(--hl-underscore-color, #d97706);
+    transition: background-color 0.2s ease;
+  }
+
+  :global([data-theme="light"]) .hl-modal-toggle,
+  .hl-modal-toggle {
+    --hl-underscore-color: #d97706;
+  }
+
+  :global([data-theme="dark"]) .hl-modal-toggle {
+    --hl-underscore-color: #fbbf24;
+  }
+
+  :global([data-theme="sepia"]) .hl-modal-toggle {
+    --hl-underscore-color: #c2410c;
   }
 
   .hl-modal-toggle.has-highlights {
     border: 1px solid var(--accent, #1f6f7a);
     color: var(--accent, #1f6f7a);
     background: rgba(31, 111, 122, 0.08);
+    --hl-underscore-color: #ea580c;
+  }
+
+  .hl-modal-toggle.active {
+    --hl-underscore-color: #fef08a !important;
   }
 
   .hl-badge {
