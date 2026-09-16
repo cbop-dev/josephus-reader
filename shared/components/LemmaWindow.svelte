@@ -211,9 +211,25 @@
     }
   });
 
+  let lastInitialWord = $state(initialWord);
+  let lastInitialLemmaNorm = $state(initialLemmaNorm);
+  let lastInitialLemmaDisplay = $state(initialLemmaDisplay);
+
   $effect(() => {
-    if (initialWord && initialWord !== selectedWord) {
-      inspectWord(initialWord);
+    const curWord = initialWord;
+    if (curWord && curWord !== lastInitialWord) {
+      lastInitialWord = curWord;
+      inspectWord(curWord);
+    }
+  });
+
+  $effect(() => {
+    const curNorm = initialLemmaNorm || initialLemmaDisplay;
+    const lastNorm = lastInitialLemmaNorm || lastInitialLemmaDisplay;
+    if (curNorm && curNorm !== lastNorm) {
+      lastInitialLemmaNorm = initialLemmaNorm;
+      lastInitialLemmaDisplay = initialLemmaDisplay;
+      selectLemma({ l: initialLemmaDisplay || initialLemmaNorm, n: normalizeKey(curNorm), c: 0, g: '' });
     }
   });
 
@@ -329,9 +345,12 @@
       }
 
       lemmaData = occurrenceData;
-      if (occurrenceData && occurrenceData.lemma) {
-        selectedLemma.l = normalizeLemmaAccents(occurrenceData.lemma);
-        if (occurrenceData.count) selectedLemma.c = occurrenceData.count;
+      if (occurrenceData && occurrenceData.lemma && selectedLemma) {
+        selectedLemma = {
+          ...selectedLemma,
+          l: normalizeLemmaAccents(occurrenceData.lemma),
+          c: occurrenceData.count || selectedLemma.c
+        };
       }
     } catch (err) {
       console.error('Failed to select lemma:', err);
